@@ -39,6 +39,7 @@ import edu.umass.cs.MHLClient.sensors.SensorReading;
  *      use the {@link #mClient} object to send data to the server. You can
  *      confirm it works by checking that both the local and server-side plots
  *      are updating (make sure your html script is running on your machine!).
+ *      APP, VISUALIZATION, PYTHON SCRIPT RUN SUCCESSFUL 9/16 7:30PM, READY FOR A0 SUBMISSION
  * <br><br>
  *
  * <b>ASSIGNMENT 1 (Step Detection)</b> :
@@ -246,6 +247,7 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      */
     public void broadcastAccelerometerReading(final long timestamp, final float[] accelerometerReadings) {
         Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.TIMESTAMP, timestamp);
         intent.putExtra(Constants.KEY.ACCELEROMETER_DATA, accelerometerReadings);
         intent.setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_DATA);
         LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
