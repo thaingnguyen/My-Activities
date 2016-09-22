@@ -13,6 +13,8 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import cs.umass.edu.myactivitiestoolkit.R;
@@ -90,7 +92,7 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     private static final String TAG = AccelerometerService.class.getName();
 
     /** */
-    private static final double SMOOTHING_FACTOR = 0.9;
+    private static final double CUTOFF_FREQUENCY = 3.0;
 
     /** Sensor Manager object for registering and unregistering system sensors */
     private SensorManager mSensorManager;
@@ -106,12 +108,15 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
     private final Filter mFilter;
 
+    private final List<Float> mCurrentBuffer;
+
     /** The step count as predicted by the Android built-in step detection algorithm. */
     private int mAndroidStepCount = 0;
 
     public AccelerometerService(){
         mStepDetector = new StepDetector();
-        mFilter = new Filter(SMOOTHING_FACTOR);
+        mFilter = new Filter(CUTOFF_FREQUENCY);
+        mCurrentBuffer = new ArrayList<>();
     }
 
     @Override
@@ -226,6 +231,9 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
             float[] values = convertDoublesToFloats(mFilter.getFilteredValues(event.values));
+            for (float element : values) {
+                mCurrentBuffer.add(element);
+            }
 
             // convert the timestamp to milliseconds (note this is not in Unix time)
             long timestamp_in_milliseconds = (long) ((double) event.timestamp / Constants.TIMESTAMPS.NANOSECONDS_PER_MILLISECOND);
@@ -235,10 +243,36 @@ public class AccelerometerService extends SensorService implements SensorEventLi
             mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
 
             // segment the data into windows or chunks
-            for (int i = 0; i < values.length; ++i) {
+            if (mCurrentBuffer.size() > 50) {
+                // take max of all axes and keep this max
+                // get min
+                // get max
+                // threshold = (min+max)/2
+                // count a step as when the acceleration curve crosses below the dynamic threshold
 
+                double min = 0;
+                double max = 0;
+                double threshold = 0;
+                int steps = 0;
+
+                for (float sample : mCurrentBuffer) {
+                    double sample_data = Math.sqrt(Math.pow(sample, 2) + 2 + 2);
+                    if (sample_data > max)
+                        max = sample_data;
+                    else if (sample_data < min)
+                        min = sample_data;
+                    mCurrentBuffer.clear();
+                }
+
+                threshold = (min + max)/2;
+
+
+                if (isUpwardCrossing(mCurrentBuffer, threshold))
+                    steps++;
 
             }
+
+
 
         }else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
 
@@ -252,6 +286,16 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
         }
     }
+
+    boolean isUpwardCrossing(ArrayList<Float> values, double threshold) {
+        for (int i = 0; i < values.size(); i++) {
+            if (values.get(i) > values.get(i + 1)
+                    && values.get(i-1) <= threshold
+                    && values.get(i) >= threshold)
+                return true;
+            }
+        return false;
+        }
 
     private float[] convertDoublesToFloats(double[] input) {
         if (input == null) {
