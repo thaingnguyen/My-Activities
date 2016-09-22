@@ -10,4 +10,8 @@
         android:summaryOn="@string/pref_msband_summaryOn"
         android:summaryOff="@string/pref_msband_summaryOff"/>
 
+    <EditTextPreference
+            android:key="edittext_preference"
+            android:title="Weight"/>
+
 </PreferenceScreen>
