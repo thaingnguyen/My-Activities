@@ -11,7 +11,12 @@
         android:summaryOff="@string/pref_msband_summaryOff"/>
 
     <EditTextPreference
-            android:key="edittext_preference"
-            android:title="Weight"/>
+        android:key="edittext_preference"
+        android:title="@string/pref_weight_title"/>
+
+    <EditTextPreference
+        android:key="edittext_preference"
+        android:title="@string/pref_height_title"/>
+
 
 </PreferenceScreen>
