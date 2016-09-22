@@ -17,6 +17,8 @@ import java.util.Locale;
 
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
+import cs.umass.edu.myactivitiestoolkit.processing.Filter;
+import cs.umass.edu.myactivitiestoolkit.steps.OnStepListener;
 import cs.umass.edu.myactivitiestoolkit.steps.StepDetector;
 import edu.umass.cs.MHLClient.client.MessageReceiver;
 import edu.umass.cs.MHLClient.client.MobileIOClient;
@@ -87,6 +89,9 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** Used during debugging to identify logs by class */
     private static final String TAG = AccelerometerService.class.getName();
 
+    /** */
+    private static final double SMOOTHING_FACTOR = 0.9;
+
     /** Sensor Manager object for registering and unregistering system sensors */
     private SensorManager mSensorManager;
 
@@ -99,11 +104,14 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** Defines your step detection algorithm. **/
     private final StepDetector mStepDetector;
 
+    private final Filter mFilter;
+
     /** The step count as predicted by the Android built-in step detection algorithm. */
     private int mAndroidStepCount = 0;
 
     public AccelerometerService(){
         mStepDetector = new StepDetector();
+        mFilter = new Filter(SMOOTHING_FACTOR);
     }
 
     @Override
@@ -157,7 +165,8 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         mAccelerometerSensor =  mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorManager.registerListener(this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
 
-        //TODO : (Assignment 1) Register your step detector. Register an OnStepListener to receive step events
+        mStepSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+        mSensorManager.registerListener(this, mStepSensor, SensorManager.SENSOR_DELAY_UI); //May change delay later
     }
 
     /**
@@ -216,12 +225,20 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
+            float[] values = convertDoublesToFloats(mFilter.getFilteredValues(event.values));
+
             // convert the timestamp to milliseconds (note this is not in Unix time)
             long timestamp_in_milliseconds = (long) ((double) event.timestamp / Constants.TIMESTAMPS.NANOSECONDS_PER_MILLISECOND);
 
-            broadcastAccelerometerReading(timestamp_in_milliseconds, event.values);
+            broadcastAccelerometerReading(timestamp_in_milliseconds, values);
 
-            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, event.values));
+            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
+
+            // segment the data into windows or chunks
+            for (int i = 0; i < values.length; ++i) {
+
+
+            }
 
         }else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
 
@@ -234,6 +251,17 @@ public class AccelerometerService extends SensorService implements SensorEventLi
             Log.w(TAG, Constants.ERROR_MESSAGES.WARNING_SENSOR_NOT_SUPPORTED);
 
         }
+    }
+
+    private float[] convertDoublesToFloats(double[] input) {
+        if (input == null) {
+            return null;
+        }
+        float[] output = new float[input.length];
+        for (int i = 0; i < input.length; i++) {
+            output[i] = (float) input[i];
+        }
+        return output;
     }
 
     @Override
