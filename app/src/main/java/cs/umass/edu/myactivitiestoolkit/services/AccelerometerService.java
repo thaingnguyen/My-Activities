@@ -5,17 +5,15 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.Build;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
@@ -91,9 +89,6 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** Used during debugging to identify logs by class */
     private static final String TAG = AccelerometerService.class.getName();
 
-    /** */
-    private static final double CUTOFF_FREQUENCY = 3.0;
-
     /** Sensor Manager object for registering and unregistering system sensors */
     private SensorManager mSensorManager;
 
@@ -101,22 +96,27 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     private Sensor mAccelerometerSensor;
 
     /** Android built-in step detection sensor **/
-    private Sensor mStepSensor;
+    private Sensor mAndroidStepSensor;
 
     /** Defines your step detection algorithm. **/
     private final StepDetector mStepDetector;
-
-    private final Filter mFilter;
-
-    private final List<Float> mCurrentBuffer;
 
     /** The step count as predicted by the Android built-in step detection algorithm. */
     private int mAndroidStepCount = 0;
 
     public AccelerometerService(){
         mStepDetector = new StepDetector();
-        mFilter = new Filter(CUTOFF_FREQUENCY);
-        mCurrentBuffer = new ArrayList<>();
+        mStepDetector.registerOnStepListener(new OnStepListener() {
+            @Override
+            public void onStepCountUpdated(int stepCount) {
+                broadcastLocalStepCount(stepCount);
+            }
+
+            @Override
+            public void onStepDetected(long timestamp, float[] values) {
+
+            }
+        });
     }
 
     @Override
@@ -170,8 +170,8 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         mAccelerometerSensor =  mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorManager.registerListener(this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
 
-        mStepSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
-        mSensorManager.registerListener(this, mStepSensor, SensorManager.SENSOR_DELAY_UI); //May change delay later
+        mAndroidStepSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+        mSensorManager.registerListener(this, mAndroidStepSensor, SensorManager.SENSOR_DELAY_UI); //May change delay later
     }
 
     /**
@@ -182,6 +182,10 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         if (mAccelerometerSensor != null) {
             mSensorManager.unregisterListener(this, mAccelerometerSensor);
         }
+        if (mAndroidStepSensor != null) {
+            mSensorManager.unregisterListener(this, mAndroidStepSensor);
+        }
+        mStepDetector.unregisterOnStepListeners();
     }
 
     @Override
@@ -230,51 +234,16 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
-            float[] values = convertDoublesToFloats(mFilter.getFilteredValues(event.values));
-            for (float element : values) {
-                mCurrentBuffer.add(element);
-            }
-
             // convert the timestamp to milliseconds (note this is not in Unix time)
             long timestamp_in_milliseconds = (long) ((double) event.timestamp / Constants.TIMESTAMPS.NANOSECONDS_PER_MILLISECOND);
 
-            broadcastAccelerometerReading(timestamp_in_milliseconds, values);
+            broadcastAccelerometerReading(timestamp_in_milliseconds, event.values);
 
-            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
+            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, event.values));
 
-            // segment the data into windows or chunks
-            if (mCurrentBuffer.size() > 50) {
-                // take max of all axes and keep this max
-                // get min
-                // get max
-                // threshold = (min+max)/2
-                // count a step as when the acceleration curve crosses below the dynamic threshold
+            mStepDetector.onSensorChanged(event);
 
-                double min = 0;
-                double max = 0;
-                double threshold = 0;
-                int steps = 0;
-
-                for (float sample : mCurrentBuffer) {
-                    double sample_data = Math.sqrt(Math.pow(sample, 2) + 2 + 2);
-                    if (sample_data > max)
-                        max = sample_data;
-                    else if (sample_data < min)
-                        min = sample_data;
-                    mCurrentBuffer.clear();
-                }
-
-                threshold = (min + max)/2;
-
-
-                if (isUpwardCrossing(mCurrentBuffer, threshold))
-                    steps++;
-
-            }
-
-
-
-        }else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+        } else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
 
             // we received a step event detected by the built-in Android step detector (assignment 1)
             broadcastAndroidStepCount(mAndroidStepCount++);
@@ -285,27 +254,6 @@ public class AccelerometerService extends SensorService implements SensorEventLi
             Log.w(TAG, Constants.ERROR_MESSAGES.WARNING_SENSOR_NOT_SUPPORTED);
 
         }
-    }
-
-    boolean isUpwardCrossing(ArrayList<Float> values, double threshold) {
-        for (int i = 0; i < values.size(); i++) {
-            if (values.get(i) > values.get(i + 1)
-                    && values.get(i-1) <= threshold
-                    && values.get(i) >= threshold)
-                return true;
-            }
-        return false;
-        }
-
-    private float[] convertDoublesToFloats(double[] input) {
-        if (input == null) {
-            return null;
-        }
-        float[] output = new float[input.length];
-        for (int i = 0; i < input.length; i++) {
-            output[i] = (float) input[i];
-        }
-        return output;
     }
 
     @Override

@@ -20,6 +20,7 @@ import sys
 import json
 import threading
 import numpy as np
+import math
 
 user_id = "75.6d.a4.38.38.e7.2d.96.76.a9"
 
@@ -55,7 +56,7 @@ def detectSteps(timestamp, filteredValues):
     global current_buffer
     global steps
 
-    sample_rate = 50
+    sample_rate = 500
 
     current_buffer.append(getVector3DValue(filteredValues))
     if len(current_buffer) > sample_rate:
@@ -74,7 +75,7 @@ def checkUpwardCrossing(values, threshold):
         if values[idx] > values[idx-1] and values[idx] >= threshold and values[idx-1] <= threshold:
             count += 1
     return count
-    
+
 #################   Server Connection Code  ####################
 
 '''

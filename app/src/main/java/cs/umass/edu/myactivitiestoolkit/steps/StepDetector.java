@@ -3,10 +3,12 @@ package cs.umass.edu.myactivitiestoolkit.steps;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
+import cs.umass.edu.myactivitiestoolkit.constants.Constants;
 import cs.umass.edu.myactivitiestoolkit.processing.Filter;
 
 /**
@@ -19,6 +21,12 @@ public class StepDetector implements SensorEventListener {
     @SuppressWarnings("unused")
     private static final String TAG = StepDetector.class.getName();
 
+    /** Frequency to for step detection filter */
+    private static final double CUTOFF_FREQUENCY = 3.0;
+
+    /** Rate to run step detection algorithm */
+    private static final double SAMPLE_RATE = 500;
+
     /** Maintains the set of listeners registered to handle step events. **/
     private ArrayList<OnStepListener> mStepListeners;
 
@@ -27,9 +35,21 @@ public class StepDetector implements SensorEventListener {
      */
     private int stepCount;
 
+    /** Customized filter based on time/frequency */
+    private final Filter mFilter;
+
+    /** Holds the current signal values to be processed */
+    private final List<Float> mCurrentValueBuffer;
+
+    /** Holds the current timestampt to be processed */
+    private final List<Long> mCurrentTimestampBuffer;
+
     public StepDetector(){
         mStepListeners = new ArrayList<>();
         stepCount = 0;
+        mFilter = new Filter(CUTOFF_FREQUENCY);
+        mCurrentValueBuffer = new ArrayList<>();
+        mCurrentTimestampBuffer = new ArrayList<>();
     }
 
     /**
@@ -68,8 +88,19 @@ public class StepDetector implements SensorEventListener {
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
-            //TODO: Detect steps! Call onStepDetected(...) when a step is detected.
+            float[] values = convertDoublesToFloats(mFilter.getFilteredValues(event.values));
+            // convert the timestamp to milliseconds (note this is not in Unix time)
+            long timestamp_in_milliseconds = (long) ((double) event.timestamp / Constants.TIMESTAMPS.NANOSECONDS_PER_MILLISECOND);
 
+            mCurrentValueBuffer.add(get3DVectorValue(values));
+            mCurrentTimestampBuffer.add(timestamp_in_milliseconds);
+
+            if (mCurrentValueBuffer.size() > SAMPLE_RATE) {
+                double threshold = (Collections.min(mCurrentValueBuffer) + Collections.max(mCurrentValueBuffer)) / 2;
+                detectSteps(mCurrentValueBuffer, mCurrentTimestampBuffer, threshold);
+                mCurrentValueBuffer.clear();
+                mCurrentTimestampBuffer.clear();
+            }
         }
     }
 
@@ -89,5 +120,35 @@ public class StepDetector implements SensorEventListener {
             stepListener.onStepDetected(timestamp, values);
             stepListener.onStepCountUpdated(stepCount);
         }
+    }
+
+    private float get3DVectorValue(float[] vector) {
+        double value = 0;
+        for (int i = 0; i < vector.length; i++) {
+            value += vector[i] * vector[i];
+        }
+        return (float) Math.sqrt(value);
+    }
+
+    private void detectSteps(List<Float> values, List<Long> timestamps, double threshold) {
+        // Check for new step using upward crossing algorithm
+        for (int i = 1; i < values.size(); i++) {
+            if (values.get(i) > values.get(i - 1)
+                    && values.get(i-1) <= threshold
+                    && values.get(i) >= threshold)
+                onStepDetected(timestamps.get(i), new float[]{values.get(i)});
+        }
+    }
+
+
+    private float[] convertDoublesToFloats(double[] input) {
+        if (input == null) {
+            return null;
+        }
+        float[] output = new float[input.length];
+        for (int i = 0; i < input.length; i++) {
+            output[i] = (float) input[i];
+        }
+        return output;
     }
 }
