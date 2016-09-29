@@ -40,7 +40,7 @@ def onStepDetected(timestamp):
     """
     Notifies the client that a step has been detected.
     """
-    send_socket.send(json.dumps({'user_id' : user_id, 'sensor_type' : 'SENSOR_SERVER_MESSAGE', 'message' : 'SENSOR_STEP', 'data': {'timestamp' : timestamp}}) + "\n")
+    send_socket.send(json.dumps({'user_id' : user_id, 'sensor_type' : 'SENSOR_SERVER_MESSAGE', 'message' : 'STEP_DETECTED', 'data': {'timestamp' : timestamp}}) + "\n")
 
 def detectSteps(timestamp, filteredValues):
     """
@@ -56,14 +56,15 @@ def detectSteps(timestamp, filteredValues):
     global current_buffer
     global steps
 
-    sample_rate = 500
+    sample_rate = 200
     delta_threshold = 5.0
-    
-    current_buffer.append(getVector3DValue(filteredValues))
-    print filteredValues
+
+    current_buffer.append((getVector3DValue(filteredValues), timestamp))
+    # print filteredValues
     if len(current_buffer) > sample_rate:
-        min_value = min(current_buffer)
-        max_value = max(current_buffer)
+        values = map(lambda x: x[0], current_buffer)
+        min_value = min(values)
+        max_value = max(values)
         if max_value - min_value > delta_threshold:
             threshold = (max_value + min_value) * 1.0 / 2
             steps += checkUpwardCrossing(current_buffer, threshold)
@@ -78,7 +79,9 @@ def getVector3DValue(values):
 def checkUpwardCrossing(values, threshold):
     count = 0
     for idx in xrange(1, len(values)):
-        if values[idx] > values[idx-1] and values[idx] >= threshold and values[idx-1] <= threshold:
+        if values[idx][0] > values[idx-1][0] \
+        and values[idx][0] >= threshold and values[idx-1][0] <= threshold:
+            onStepDetected(values[idx][1])
             count += 1
     return count
 

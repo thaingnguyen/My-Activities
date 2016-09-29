@@ -109,13 +109,15 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** The step count as predicted by the server side algorithm. */
     private int mServerStepCount = 0;
 
+    private LocalBroadcastManager mLocalBroadcastManager;
+
     public AccelerometerService(){
+        mLocalBroadcastManager = LocalBroadcastManager.getInstance(this);
         mFilter = new Filter(CUTOFF_FREQUENCY);
         mStepDetector = new StepDetector();
         mStepDetector.registerOnStepListener(new OnStepListener() {
             @Override
             public void onStepCountUpdated(int stepCount) {
-                Log.d(TAG, "New step count " + stepCount);
                 broadcastLocalStepCount(stepCount);
             }
 
@@ -142,13 +144,13 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         mClient.registerMessageReceiver(new MessageReceiver(Constants.MHLClientFilter.STEP_DETECTED) {
             @Override
             protected void onMessageReceived(JSONObject json) {
-                Log.d(TAG, "Received step update from server.");
+                Log.i(TAG, "Received step update from server.");
                 try {
                     JSONObject data = json.getJSONObject("data");
                     long timestamp = data.getLong("timestamp");
                     mServerStepCount += 1;
                     broadcastServerStepCount(mServerStepCount);
-                    Log.d(TAG, "Step occurred at " + timestamp + ".");
+//                    Log.i(TAG, "Step occurred at " + timestamp + ".");
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -280,7 +282,7 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        Log.i(TAG, "Accuracy changed: " + accuracy);
+//        Log.i(TAG, "Accuracy changed: " + accuracy);
     }
 
     /**
@@ -288,12 +290,11 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * @param accelerometerReadings the x, y, and z accelerometer readings
      */
     public void broadcastAccelerometerReading(final long timestamp, final float[] accelerometerReadings) {
-        Intent intent = new Intent();
-        intent.putExtra(Constants.KEY.TIMESTAMP, timestamp);
-        intent.putExtra(Constants.KEY.ACCELEROMETER_DATA, accelerometerReadings);
-        intent.setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_DATA);
-        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-        manager.sendBroadcast(intent);
+        mLocalBroadcastManager.sendBroadcast(
+                new Intent()
+                    .putExtra(Constants.KEY.TIMESTAMP, timestamp)
+                    .putExtra(Constants.KEY.ACCELEROMETER_DATA, accelerometerReadings)
+                    .setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_DATA));
     }
 
     // ***************** Methods for broadcasting step counts (assignment 1) *****************
@@ -303,11 +304,10 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * to other application components, e.g. the main UI.
      */
     public void broadcastAndroidStepCount(int stepCount) {
-        Intent intent = new Intent();
-        intent.putExtra(Constants.KEY.STEP_COUNT, stepCount);
-        intent.setAction(Constants.ACTION.BROADCAST_ANDROID_STEP_COUNT);
-        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-        manager.sendBroadcast(intent);
+        mLocalBroadcastManager.sendBroadcast(
+                new Intent()
+                    .putExtra(Constants.KEY.STEP_COUNT, stepCount)
+                    .setAction(Constants.ACTION.BROADCAST_ANDROID_STEP_COUNT));
     }
 
     /**
@@ -315,11 +315,10 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * to other application components, e.g. the main UI.
      */
     public void broadcastLocalStepCount(int stepCount) {
-        Intent intent = new Intent();
-        intent.putExtra(Constants.KEY.STEP_COUNT, stepCount);
-        intent.setAction(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT);
-        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-        manager.sendBroadcast(intent);
+        mLocalBroadcastManager.sendBroadcast(
+                new Intent()
+                    .putExtra(Constants.KEY.STEP_COUNT, stepCount)
+                    .setAction(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT));
     }
 
     /**
@@ -327,11 +326,11 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * to other application components, e.g. the main UI.
      */
     public void broadcastServerStepCount(int stepCount) {
-        Intent intent = new Intent();
-        intent.putExtra(Constants.KEY.STEP_COUNT, stepCount);
-        intent.setAction(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT);
-        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-        manager.sendBroadcast(intent);
+//        Log.i(TAG, "broadcast " + stepCount);
+        mLocalBroadcastManager.sendBroadcast(
+                new Intent()
+                    .putExtra(Constants.KEY.STEP_COUNT, stepCount)
+                    .setAction(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT));
     }
 
     /**
@@ -339,12 +338,11 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * Use this if you would like to visualize the detected step on the accelerometer signal.
      */
     public void broadcastStepDetected(long timestamp, float[] values) {
-        Log.d(TAG, timestamp + " " + values);
-        Intent intent = new Intent();
-        intent.putExtra(Constants.KEY.ACCELEROMETER_PEAK_TIMESTAMP, timestamp);
-        intent.putExtra(Constants.KEY.ACCELEROMETER_PEAK_VALUE, values);
-        intent.setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_PEAK);
-        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-        manager.sendBroadcast(intent);
+//        Log.d(TAG, timestamp + " " + values);
+        mLocalBroadcastManager.sendBroadcast(
+                new Intent()
+                    .putExtra(Constants.KEY.ACCELEROMETER_PEAK_TIMESTAMP, timestamp)
+                    .putExtra(Constants.KEY.ACCELEROMETER_PEAK_VALUE, values)
+                    .setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_PEAK));
     }
 }

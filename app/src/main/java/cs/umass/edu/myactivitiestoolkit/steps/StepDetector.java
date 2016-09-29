@@ -29,7 +29,7 @@ public class StepDetector implements SensorEventListener {
     private static final double DELTA_THRESHOLD = 5;
 
     /** Rate to run step detection algorithm */
-    private static final double SAMPLE_RATE = 100;
+    private static final double SAMPLE_RATE = 200;
 
     /** Maintains the set of listeners registered to handle step events. **/
     private ArrayList<OnStepListener> mStepListeners;
