@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -167,7 +168,6 @@ public class ExerciseFragment extends Fragment {
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // TODO: (Assignment 1) Display the step count as predicted by your server-side algorithm, when a step event occurs
             if (intent.getAction() != null) {
                 if (intent.getAction().equals(Constants.ACTION.BROADCAST_MESSAGE)) {
                     int message = intent.getIntExtra(Constants.KEY.MESSAGE, -1);
@@ -205,9 +205,13 @@ public class ExerciseFragment extends Fragment {
                 } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT)) {
                     int stepCount = intent.getIntExtra(Constants.KEY.STEP_COUNT, 0);
                     displayLocalStepCount(stepCount);
+                } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT)) {
+                    int stepCount = intent.getIntExtra(Constants.KEY.STEP_COUNT, 0);
+                    displayServerStepCount(stepCount);
                 } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_ACCELEROMETER_PEAK)){
                     long timestamp = intent.getLongExtra(Constants.KEY.ACCELEROMETER_PEAK_TIMESTAMP, -1);
                     float[] values = intent.getFloatArrayExtra(Constants.KEY.ACCELEROMETER_PEAK_VALUE);
+                    Log.d(TAG, timestamp + " " + values);
                     if (timestamp > 0) {
                         mPeakTimestamps.add(timestamp);
                         mPeakValues.add(values[2]); //place on z-axis signal
@@ -372,6 +376,19 @@ public class ExerciseFragment extends Fragment {
             @Override
             public void run() {
                 txtLocalStepCount.setText(String.format(Locale.getDefault(), getString(R.string.local_step_count), stepCount));
+            }
+        });
+    }
+
+    /**
+     * Displays the step count as computed by the server side step detection algorithm.
+     * @param stepCount the number of steps taken since the service started
+     */
+    private void displayServerStepCount(final int stepCount){
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                txtLocalStepCount.setText(String.format(Locale.getDefault(), getString(R.string.server_step_count), stepCount));
             }
         });
     }

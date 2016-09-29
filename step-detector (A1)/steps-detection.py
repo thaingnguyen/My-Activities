@@ -56,12 +56,10 @@ def detectSteps(timestamp, filteredValues):
     global current_buffer
     global steps
 
-    print filteredValues
-    
     sample_rate = 500
 
     current_buffer.append(getVector3DValue(filteredValues))
-
+    print filteredValues
     if len(current_buffer) > sample_rate:
         threshold = (min(current_buffer) + max(current_buffer)) * 1.0 / 2
         steps += checkUpwardCrossing(current_buffer, threshold)

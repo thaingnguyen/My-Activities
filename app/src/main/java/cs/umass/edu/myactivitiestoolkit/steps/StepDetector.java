@@ -43,17 +43,13 @@ public class StepDetector implements SensorEventListener {
     private final Filter mFilter;
 
     /** Holds the current signal values to be processed */
-    private final List<Float> mCurrentValueBuffer;
-
-    /** Holds the current timestampt to be processed */
-    private final List<Long> mCurrentTimestampBuffer;
+    private final List<AccelerometerBuffer> mCurrentBuffers;
 
     public StepDetector(){
         mStepListeners = new ArrayList<>();
         stepCount = 0;
         mFilter = new Filter(CUTOFF_FREQUENCY);
-        mCurrentValueBuffer = new ArrayList<>();
-        mCurrentTimestampBuffer = new ArrayList<>();
+        mCurrentBuffers = new ArrayList<>();
     }
 
     /**
@@ -96,20 +92,17 @@ public class StepDetector implements SensorEventListener {
             // convert the timestamp to milliseconds (note this is not in Unix time)
             long timestamp_in_milliseconds = (long) ((double) event.timestamp / Constants.TIMESTAMPS.NANOSECONDS_PER_MILLISECOND);
 
-            mCurrentValueBuffer.add(get3DVectorValue(values));
-            mCurrentTimestampBuffer.add(timestamp_in_milliseconds);
+            mCurrentBuffers.add(new AccelerometerBuffer(values, timestamp_in_milliseconds));
 
-            if (mCurrentValueBuffer.size() > SAMPLE_RATE) {
-                double minValue = Collections.min(mCurrentValueBuffer);
-                double maxValue = Collections.max(mCurrentValueBuffer);
-//                Log.i(TAG, "minmax:" + minValue + " " + maxValue);
-                if (maxValue - minValue > DELTA_THRESHOLD) {
-                    double threshold = (maxValue + minValue) / 2;
-                    detectSteps(mCurrentValueBuffer, mCurrentTimestampBuffer, threshold);
+            if (mCurrentBuffers.size() > SAMPLE_RATE) {
+                AccelerometerBuffer minBuffer = Collections.min(mCurrentBuffers);
+                AccelerometerBuffer maxBuffer = Collections.max(mCurrentBuffers);
+                Log.i(TAG, "minmax:" + minBuffer.value + " " + maxBuffer.value);
+                if (maxBuffer.value - minBuffer.value > DELTA_THRESHOLD) {
+                    double threshold = (maxBuffer.value + minBuffer.value) / 2;
+                    detectSteps(mCurrentBuffers, threshold);
                 }
-                mCurrentValueBuffer.clear();
-                mCurrentTimestampBuffer.clear();
-
+                mCurrentBuffers.clear();
             }
         }
     }
@@ -132,21 +125,13 @@ public class StepDetector implements SensorEventListener {
         }
     }
 
-    private float get3DVectorValue(float[] vector) {
-        double value = 0;
-        for (int i = 0; i < vector.length; i++) {
-            value += vector[i] * vector[i];
-        }
-        return (float) Math.sqrt(value);
-    }
-
-    private void detectSteps(List<Float> values, List<Long> timestamps, double threshold) {
+    private void detectSteps(List<AccelerometerBuffer> buffers, double threshold) {
         // Check for new step using upward crossing algorithm
-        for (int i = 1; i < values.size(); i++) {
-            if (values.get(i) > values.get(i - 1)
-                    && values.get(i-1) <= threshold
-                    && values.get(i) >= threshold)
-                onStepDetected(timestamps.get(i), new float[]{values.get(i)});
+        for (int i = 1; i < buffers.size(); i++) {
+            if (buffers.get(i).value > buffers.get(i - 1).value
+                    && buffers.get(i-1).value <= threshold
+                    && buffers.get(i).value >= threshold)
+                onStepDetected(buffers.get(i).timestamp, buffers.get(i).vector);
         }
     }
 

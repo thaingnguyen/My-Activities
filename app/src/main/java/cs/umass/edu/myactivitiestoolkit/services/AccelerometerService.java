@@ -106,6 +106,9 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** The step count as predicted by the Android built-in step detection algorithm. */
     private int mAndroidStepCount = 0;
 
+    /** The step count as predicted by the server side algorithm. */
+    private int mServerStepCount = 0;
+
     public AccelerometerService(){
         mFilter = new Filter(CUTOFF_FREQUENCY);
         mStepDetector = new StepDetector();
@@ -118,7 +121,7 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
             @Override
             public void onStepDetected(long timestamp, float[] values) {
-
+                broadcastStepDetected(timestamp, values);
             }
         });
     }
@@ -143,6 +146,8 @@ public class AccelerometerService extends SensorService implements SensorEventLi
                 try {
                     JSONObject data = json.getJSONObject("data");
                     long timestamp = data.getLong("timestamp");
+                    mServerStepCount += 1;
+                    broadcastServerStepCount(mServerStepCount);
                     Log.d(TAG, "Step occurred at " + timestamp + ".");
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -317,15 +322,24 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         manager.sendBroadcast(intent);
     }
 
-
-    // TODO: (Assignment 1) Broadcast the step count as computed by your server-side algorithm.
-
+    /**
+     * Broadcasts the step count computed by server side algorithm
+     * to other application components, e.g. the main UI.
+     */
+    public void broadcastServerStepCount(int stepCount) {
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.STEP_COUNT, stepCount);
+        intent.setAction(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
+    }
 
     /**
      * Broadcasts a step event to other application components, e.g. the main UI.
      * Use this if you would like to visualize the detected step on the accelerometer signal.
      */
     public void broadcastStepDetected(long timestamp, float[] values) {
+        Log.d(TAG, timestamp + " " + values);
         Intent intent = new Intent();
         intent.putExtra(Constants.KEY.ACCELEROMETER_PEAK_TIMESTAMP, timestamp);
         intent.putExtra(Constants.KEY.ACCELEROMETER_PEAK_VALUE, values);
