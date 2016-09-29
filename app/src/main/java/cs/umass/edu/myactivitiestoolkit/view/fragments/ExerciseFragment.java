@@ -1,5 +1,6 @@
 package cs.umass.edu.myactivitiestoolkit.view.fragments;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -81,6 +82,8 @@ public class ExerciseFragment extends Fragment {
     /** Used during debugging to identify logs by class. */
     @SuppressWarnings("unused")
     private static final String TAG = ExerciseFragment.class.getName();
+
+    private Activity mActivity;
 
     /** The switch which toggles the {@link AccelerometerService}. **/
     private Switch switchAccelerometer;
@@ -352,6 +355,14 @@ public class ExerciseFragment extends Fragment {
         super.onStop();
     }
 
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        if (context instanceof Activity){
+            mActivity = (Activity) context;
+        }
+    }
+
     /**
      * Displays the accelerometer reading on the UI.
      * @param x acceleration along the x-axis
@@ -359,7 +370,7 @@ public class ExerciseFragment extends Fragment {
      * @param z acceleration along the z-axis
      */
     private void displayAccelerometerReading(final float x, final float y, final float z){
-        getActivity().runOnUiThread(new Runnable() {
+        mActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 txtAccelerometerReading.setText(String.format(Locale.getDefault(), getActivity().getString(R.string.accelerometer_reading_format_string), x, y, z));
