@@ -8,6 +8,8 @@ import android.hardware.SensorManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import android.widget.EditText;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 

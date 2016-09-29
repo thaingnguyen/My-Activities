@@ -29,9 +29,13 @@
     <string name="local_step_count_initial">Local: 0</string>
     <string name="server_step_count_initial">Server: 0</string>
 
+    <string name="calories_burned_initial">Calories: 0</string>
+
     <string name="android_step_count" formatted="false">Android: %d</string>
     <string name="local_step_count" formatted="false">Local: %d</string>
     <string name="server_step_count" formatted="false">Server: %d</string>
+
+    <string name="calories_burned" formatted="false">Calories: %d</string>
 
     <string name="speaker" formatted="false">Speaker: %s</string>
     <string name="speaker_initial">Speaker: None</string>

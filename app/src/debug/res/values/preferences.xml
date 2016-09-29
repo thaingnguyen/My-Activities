@@ -5,7 +5,11 @@
     <string name="pref_msband_summaryOff">Accelerometer data will stream from your mobile phone.</string>
     <bool name="pref_msband_default">false</bool>
 
-    <string name="pref_weight_title">Weight (lbs)</string>
-
+    <string name="pref_weight_key">weight-lb</string>
+    <string name="pref_height_key">height-ft</string>
+    <string name="pref_weight_title">Weight (lb)</string>
     <string name="pref_height_title">Height (ft,in)</string>
+    <string name="pref_height_default">170</string>
+    <integer name="pref_weight_default">70</integer>
+
 </resources>

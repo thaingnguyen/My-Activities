@@ -9,6 +9,8 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.preference.EditTextPreference;
+import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
@@ -35,7 +37,9 @@ import java.text.ParsePosition;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Locale;
+import java.lang.Math;
 import java.util.Queue;
+import java.util.concurrent.RunnableFuture;
 
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
@@ -88,6 +92,9 @@ public class ExerciseFragment extends Fragment {
     /** The switch which toggles the {@link AccelerometerService}. **/
     private Switch switchAccelerometer;
 
+    /** */
+    private EditTextPreference mHeightPreference;
+
     /** Displays the accelerometer x, y and z-readings. **/
     private TextView txtAccelerometerReading;
 
@@ -96,6 +103,16 @@ public class ExerciseFragment extends Fragment {
 
     /** Displays the step count computed by your local step detection algorithm. **/
     private TextView txtLocalStepCount;
+
+    /** Displays the calories burned computed by algorithm. **/
+    private TextView txtCalories;
+
+    /***/
+    private Long initial_timestamp;
+
+    private Long timestamp;
+
+    private Integer calcHeight;
 
     /** Displays the step count computed by your server-side step detection algorithm. **/
     private TextView txtServerStepCount;
@@ -180,7 +197,7 @@ public class ExerciseFragment extends Fragment {
                         switchAccelerometer.setChecked(false);
                     }
                 } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_ACCELEROMETER_DATA)) {
-                    long timestamp = intent.getLongExtra(Constants.KEY.TIMESTAMP, -1);
+                    timestamp = intent.getLongExtra(Constants.KEY.TIMESTAMP, -1);
                     float[] accelerometerValues = intent.getFloatArrayExtra(Constants.KEY.ACCELEROMETER_DATA);
                     displayAccelerometerReading(accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]);
 
@@ -205,6 +222,12 @@ public class ExerciseFragment extends Fragment {
                 } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_ANDROID_STEP_COUNT)) {
                     int stepCount = intent.getIntExtra(Constants.KEY.STEP_COUNT, 0);
                     displayAndroidStepCount(stepCount);
+                    SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+                    calcHeight = Integer.parseInt(preferences.getString(getString(R.string.pref_height_key),
+                            getResources().getString(R.string.pref_height_default)));
+//                    initial_timestamp = System.currentTimeMillis()/1000;
+                    displayCalories(stepCount);
+
                 } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT)) {
                     int stepCount = intent.getIntExtra(Constants.KEY.STEP_COUNT, 0);
                     displayLocalStepCount(stepCount);
@@ -270,6 +293,16 @@ public class ExerciseFragment extends Fragment {
                 }
             }
         });
+
+
+        txtCalories = (TextView) view.findViewById(R.id.txtCalories);
+
+//        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+//        Integer calcHeight = Integer.parseInt(preferences.getString(getString(R.string.pref_height_key),
+//                getResources().getString(R.string.pref_height_default)));
+//        Log.i(TAG, calcHeight.toString());
+
+
 
         // initialize plot and set plot parameters
         mPlot = (XYPlot) view.findViewById(R.id.accelerometerPlot);
@@ -340,6 +373,8 @@ public class ExerciseFragment extends Fragment {
         filter.addAction(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT);
         filter.addAction(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT);
         broadcastManager.registerReceiver(receiver, filter);
+
+//        initial_timestamp = System.currentTimeMillis()/1000;
     }
 
     /**
@@ -436,6 +471,65 @@ public class ExerciseFragment extends Fragment {
         }
     }
 
+    private void displayCalories(final int stepCount) {
+
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                int calories = (int) (0.044 * stepCount);
+
+                txtCalories.setText(String.format(Locale.getDefault(), getString(R.string.calories_burned), calories));
+            }
+        });
+    }
+
+    /***/
+//    private void displayCalories(final int stepCount, final int height) {
+//
+//        getActivity().runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//
+//                Long currentTimestamp = System.currentTimeMillis()/1000;
+//                Log.d(TAG, "timestamp is" + timestamp + "\n" + "initial timestamp is" + initial_timestamp + "\n" + "current timestamp is" +
+//                currentTimestamp);
+//
+//                Long timespan = 2 * (currentTimestamp - initial_timestamp);
+//
+//                Long step_speed = stepCount/timespan;
+//                Long speed = step_speed * getStride(step_speed, height);
+//                double calories = 4.5 * speed/timespan;
+//
+//
+//                txtCalories.setText(String.format(Locale.getDefault(), getString(R.string.calories_burned), calories));
+//            }
+//        });
+//    }
+
+
+    public long getStride(long speed, int height) {
+        if(speed <= 2 && speed > 0) {
+            return height/5;
+        }
+        else if(speed > 2 && speed <= 3) {
+            return height/4;
+        }
+        else if(speed > 3 && speed <= 4) {
+            return height/3;
+        }
+        else if(speed > 4 && speed <= 5) {
+            return height/2;
+        }
+        else if(speed > 5 && speed <= 6) {
+            return (long) (height/1.2);
+        }
+        else if(speed > 6 && speed <= 8) {
+            return height;
+        }
+        else {
+            return (long) (1.2 * height);
+        }
+    }
 
     /**
      * Clears the x, y, z and peak plot data series.
