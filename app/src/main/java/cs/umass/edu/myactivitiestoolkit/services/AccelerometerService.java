@@ -11,10 +11,6 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
 import cs.umass.edu.myactivitiestoolkit.processing.Filter;
@@ -89,6 +85,9 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** Used during debugging to identify logs by class */
     private static final String TAG = AccelerometerService.class.getName();
 
+    /** Frequency to for step detection filter */
+    private static final double CUTOFF_FREQUENCY = 3.0;
+
     /** Sensor Manager object for registering and unregistering system sensors */
     private SensorManager mSensorManager;
 
@@ -101,14 +100,19 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** Defines your step detection algorithm. **/
     private final StepDetector mStepDetector;
 
+    /** Customized filter based on time/frequency */
+    private final Filter mFilter;
+
     /** The step count as predicted by the Android built-in step detection algorithm. */
     private int mAndroidStepCount = 0;
 
     public AccelerometerService(){
+        mFilter = new Filter(CUTOFF_FREQUENCY);
         mStepDetector = new StepDetector();
         mStepDetector.registerOnStepListener(new OnStepListener() {
             @Override
             public void onStepCountUpdated(int stepCount) {
+                Log.d(TAG, "New step count " + stepCount);
                 broadcastLocalStepCount(stepCount);
             }
 
@@ -167,11 +171,14 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     @Override
     protected void registerSensors(){
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        mAccelerometerSensor =  mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mSensorManager.registerListener(this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
 
+        mAccelerometerSensor =  mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mAndroidStepSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
-        mSensorManager.registerListener(this, mAndroidStepSensor, SensorManager.SENSOR_DELAY_UI); //May change delay later
+
+        mSensorManager.registerListener(this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, mAndroidStepSensor, SensorManager.SENSOR_DELAY_UI);
+
+        mSensorManager.registerListener(mStepDetector, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     /**
@@ -234,15 +241,14 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
+            float[] values = convertDoublesToFloats(mFilter.getFilteredValues(event.values));
+
             // convert the timestamp to milliseconds (note this is not in Unix time)
             long timestamp_in_milliseconds = (long) ((double) event.timestamp / Constants.TIMESTAMPS.NANOSECONDS_PER_MILLISECOND);
 
-            broadcastAccelerometerReading(timestamp_in_milliseconds, event.values);
+            broadcastAccelerometerReading(timestamp_in_milliseconds, values);
 
-            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, event.values));
-
-            mStepDetector.onSensorChanged(event);
-
+            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
         } else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
 
             // we received a step event detected by the built-in Android step detector (assignment 1)
@@ -254,6 +260,17 @@ public class AccelerometerService extends SensorService implements SensorEventLi
             Log.w(TAG, Constants.ERROR_MESSAGES.WARNING_SENSOR_NOT_SUPPORTED);
 
         }
+    }
+
+    private float[] convertDoublesToFloats(double[] input) {
+        if (input == null) {
+            return null;
+        }
+        float[] output = new float[input.length];
+        for (int i = 0; i < input.length; i++) {
+            output[i] = (float) input[i];
+        }
+        return output;
     }
 
     @Override

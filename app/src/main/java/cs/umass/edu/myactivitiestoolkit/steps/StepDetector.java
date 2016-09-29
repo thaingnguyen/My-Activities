@@ -3,6 +3,7 @@ package cs.umass.edu.myactivitiestoolkit.steps;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,8 +25,11 @@ public class StepDetector implements SensorEventListener {
     /** Frequency to for step detection filter */
     private static final double CUTOFF_FREQUENCY = 3.0;
 
+    /** Threshold for difference between max and min in one buffer */
+    private static final double DELTA_THRESHOLD = 5;
+
     /** Rate to run step detection algorithm */
-    private static final double SAMPLE_RATE = 500;
+    private static final double SAMPLE_RATE = 100;
 
     /** Maintains the set of listeners registered to handle step events. **/
     private ArrayList<OnStepListener> mStepListeners;
@@ -96,10 +100,16 @@ public class StepDetector implements SensorEventListener {
             mCurrentTimestampBuffer.add(timestamp_in_milliseconds);
 
             if (mCurrentValueBuffer.size() > SAMPLE_RATE) {
-                double threshold = (Collections.min(mCurrentValueBuffer) + Collections.max(mCurrentValueBuffer)) / 2;
-                detectSteps(mCurrentValueBuffer, mCurrentTimestampBuffer, threshold);
+                double minValue = Collections.min(mCurrentValueBuffer);
+                double maxValue = Collections.max(mCurrentValueBuffer);
+//                Log.i(TAG, "minmax:" + minValue + " " + maxValue);
+                if (maxValue - minValue > DELTA_THRESHOLD) {
+                    double threshold = (maxValue + minValue) / 2;
+                    detectSteps(mCurrentValueBuffer, mCurrentTimestampBuffer, threshold);
+                }
                 mCurrentValueBuffer.clear();
                 mCurrentTimestampBuffer.clear();
+
             }
         }
     }
