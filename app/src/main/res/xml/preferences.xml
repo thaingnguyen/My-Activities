@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -11,12 +12,15 @@
         android:summaryOff="@string/pref_msband_summaryOff"/>
 
     <EditTextPreference
-        android:key="edittext_preference"
-        android:title="@string/pref_weight_title"/>
+        android:title="@string/pref_weight_title"
+        android:key="@string/pref_weight_key"
+        android:inputType="numberDecimal"
+        android:id="@+id/weight"/>
 
     <EditTextPreference
-        android:key="edittext_preference"
-        android:title="@string/pref_height_title"/>
-
+        android:title="@string/pref_height_title"
+        android:key="@string/pref_height_key"
+        android:id="@+id/height"
+        android:inputType="numberDecimal"/>
 
 </PreferenceScreen>
