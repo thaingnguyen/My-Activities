@@ -5,6 +5,7 @@ public class FFT
         int n, m;
 
         // Lookup tables.  Only need to recompute when size of FFT changes.
+        //Take only the two most dominant waveforms!!!!!!
         double[] cos;
         double[] sin;
 
