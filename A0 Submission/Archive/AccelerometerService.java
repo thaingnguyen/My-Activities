@@ -5,18 +5,18 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-
-import android.widget.EditText;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Locale;
+
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
-import cs.umass.edu.myactivitiestoolkit.processing.Filter;
-import cs.umass.edu.myactivitiestoolkit.steps.OnStepListener;
 import cs.umass.edu.myactivitiestoolkit.steps.StepDetector;
 import edu.umass.cs.MHLClient.client.MessageReceiver;
 import edu.umass.cs.MHLClient.client.MobileIOClient;
@@ -87,9 +87,6 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** Used during debugging to identify logs by class */
     private static final String TAG = AccelerometerService.class.getName();
 
-    /** Frequency to for step detection filter */
-    private static final double CUTOFF_FREQUENCY = 3.0;
-
     /** Sensor Manager object for registering and unregistering system sensors */
     private SensorManager mSensorManager;
 
@@ -97,37 +94,16 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     private Sensor mAccelerometerSensor;
 
     /** Android built-in step detection sensor **/
-    private Sensor mAndroidStepSensor;
+    private Sensor mStepSensor;
 
     /** Defines your step detection algorithm. **/
     private final StepDetector mStepDetector;
 
-    /** Customized filter based on time/frequency */
-    private final Filter mFilter;
-
     /** The step count as predicted by the Android built-in step detection algorithm. */
     private int mAndroidStepCount = 0;
 
-    /** The step count as predicted by the server side algorithm. */
-    private int mServerStepCount = 0;
-
-    private LocalBroadcastManager mLocalBroadcastManager;
-
     public AccelerometerService(){
-        mLocalBroadcastManager = LocalBroadcastManager.getInstance(this);
-        mFilter = new Filter(CUTOFF_FREQUENCY);
         mStepDetector = new StepDetector();
-        mStepDetector.registerOnStepListener(new OnStepListener() {
-            @Override
-            public void onStepCountUpdated(int stepCount) {
-                broadcastLocalStepCount(stepCount);
-            }
-
-            @Override
-            public void onStepDetected(long timestamp, float[] values) {
-                broadcastStepDetected(timestamp, values);
-            }
-        });
     }
 
     @Override
@@ -146,13 +122,11 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         mClient.registerMessageReceiver(new MessageReceiver(Constants.MHLClientFilter.STEP_DETECTED) {
             @Override
             protected void onMessageReceived(JSONObject json) {
-                Log.i(TAG, "Received step update from server.");
+                Log.d(TAG, "Received step update from server.");
                 try {
                     JSONObject data = json.getJSONObject("data");
                     long timestamp = data.getLong("timestamp");
-                    mServerStepCount += 1;
-                    broadcastServerStepCount(mServerStepCount);
-//                    Log.i(TAG, "Step occurred at " + timestamp + ".");
+                    Log.d(TAG, "Step occurred at " + timestamp + ".");
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -180,14 +154,10 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     @Override
     protected void registerSensors(){
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-
         mAccelerometerSensor =  mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mAndroidStepSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
-
         mSensorManager.registerListener(this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        mSensorManager.registerListener(this, mAndroidStepSensor, SensorManager.SENSOR_DELAY_UI);
 
-        mSensorManager.registerListener(mStepDetector, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        //TODO : (Assignment 1) Register your step detector. Register an OnStepListener to receive step events
     }
 
     /**
@@ -198,10 +168,6 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         if (mAccelerometerSensor != null) {
             mSensorManager.unregisterListener(this, mAccelerometerSensor);
         }
-        if (mAndroidStepSensor != null) {
-            mSensorManager.unregisterListener(this, mAndroidStepSensor);
-        }
-        mStepDetector.unregisterOnStepListeners();
     }
 
     @Override
@@ -250,15 +216,14 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
-            float[] values = convertDoublesToFloats(mFilter.getFilteredValues(event.values));
-
             // convert the timestamp to milliseconds (note this is not in Unix time)
             long timestamp_in_milliseconds = (long) ((double) event.timestamp / Constants.TIMESTAMPS.NANOSECONDS_PER_MILLISECOND);
 
-            broadcastAccelerometerReading(timestamp_in_milliseconds, values);
+            broadcastAccelerometerReading(timestamp_in_milliseconds, event.values);
 
-            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
-        } else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, event.values));
+
+        }else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
 
             // we received a step event detected by the built-in Android step detector (assignment 1)
             broadcastAndroidStepCount(mAndroidStepCount++);
@@ -271,20 +236,9 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         }
     }
 
-    private float[] convertDoublesToFloats(double[] input) {
-        if (input == null) {
-            return null;
-        }
-        float[] output = new float[input.length];
-        for (int i = 0; i < input.length; i++) {
-            output[i] = (float) input[i];
-        }
-        return output;
-    }
-
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//        Log.i(TAG, "Accuracy changed: " + accuracy);
+        Log.i(TAG, "Accuracy changed: " + accuracy);
     }
 
     /**
@@ -292,11 +246,12 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * @param accelerometerReadings the x, y, and z accelerometer readings
      */
     public void broadcastAccelerometerReading(final long timestamp, final float[] accelerometerReadings) {
-        mLocalBroadcastManager.sendBroadcast(
-                new Intent()
-                    .putExtra(Constants.KEY.TIMESTAMP, timestamp)
-                    .putExtra(Constants.KEY.ACCELEROMETER_DATA, accelerometerReadings)
-                    .setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_DATA));
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.TIMESTAMP, timestamp);
+        intent.putExtra(Constants.KEY.ACCELEROMETER_DATA, accelerometerReadings);
+        intent.setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_DATA);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
     }
 
     // ***************** Methods for broadcasting step counts (assignment 1) *****************
@@ -306,10 +261,11 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * to other application components, e.g. the main UI.
      */
     public void broadcastAndroidStepCount(int stepCount) {
-        mLocalBroadcastManager.sendBroadcast(
-                new Intent()
-                    .putExtra(Constants.KEY.STEP_COUNT, stepCount)
-                    .setAction(Constants.ACTION.BROADCAST_ANDROID_STEP_COUNT));
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.STEP_COUNT, stepCount);
+        intent.setAction(Constants.ACTION.BROADCAST_ANDROID_STEP_COUNT);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
     }
 
     /**
@@ -317,34 +273,27 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * to other application components, e.g. the main UI.
      */
     public void broadcastLocalStepCount(int stepCount) {
-        mLocalBroadcastManager.sendBroadcast(
-                new Intent()
-                    .putExtra(Constants.KEY.STEP_COUNT, stepCount)
-                    .setAction(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT));
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.STEP_COUNT, stepCount);
+        intent.setAction(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
     }
 
-    /**
-     * Broadcasts the step count computed by server side algorithm
-     * to other application components, e.g. the main UI.
-     */
-    public void broadcastServerStepCount(int stepCount) {
-//        Log.i(TAG, "broadcast " + stepCount);
-        mLocalBroadcastManager.sendBroadcast(
-                new Intent()
-                    .putExtra(Constants.KEY.STEP_COUNT, stepCount)
-                    .setAction(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT));
-    }
+
+    // TODO: (Assignment 1) Broadcast the step count as computed by your server-side algorithm.
+
 
     /**
      * Broadcasts a step event to other application components, e.g. the main UI.
      * Use this if you would like to visualize the detected step on the accelerometer signal.
      */
     public void broadcastStepDetected(long timestamp, float[] values) {
-//        Log.d(TAG, timestamp + " " + values);
-        mLocalBroadcastManager.sendBroadcast(
-                new Intent()
-                    .putExtra(Constants.KEY.ACCELEROMETER_PEAK_TIMESTAMP, timestamp)
-                    .putExtra(Constants.KEY.ACCELEROMETER_PEAK_VALUE, values)
-                    .setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_PEAK));
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.ACCELEROMETER_PEAK_TIMESTAMP, timestamp);
+        intent.putExtra(Constants.KEY.ACCELEROMETER_PEAK_VALUE, values);
+        intent.setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_PEAK);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
     }
 }
