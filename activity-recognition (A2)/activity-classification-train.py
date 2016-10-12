@@ -46,7 +46,7 @@ import pickle
 
 print("Loading data...")
 sys.stdout.flush()
-data_file = os.path.join('data', 'activity-data.csv')
+data_file = os.path.join('data', 'sample-data.csv')
 data = np.genfromtxt(data_file, delimiter=',')
 print("Loaded {} raw labelled activity data samples.".format(len(data)))
 sys.stdout.flush()
@@ -91,7 +91,7 @@ n_features = len(feature_names)
 X = np.zeros((0,n_features))
 y = np.zeros(0,)
 
-for i,window_with_timestamp_and_label in slidingWindow(data, window_size, step_size):
+"""for i,window_with_timestamp_and_label in slidingWindow(data, window_size, step_size):
     # omit timestamp and label from accelerometer window for feature extraction:
     window = window_with_timestamp_and_label[:,1:-1]  
     # extract features over window:
@@ -99,7 +99,7 @@ for i,window_with_timestamp_and_label in slidingWindow(data, window_size, step_s
     # append features:
     X = np.append(X, np.reshape(x, (1,-1)), axis=0)
     # append label:
-    y = np.append(y, window_with_timestamp_and_label[10, -1])
+    y = np.append(y, window_with_timestamp_and_label[10, -1])"""
     
 print("Finished feature extraction over {} windows".format(len(X)))
 print("Unique labels found: {}".format(set(y)))
@@ -133,6 +133,8 @@ n = len(y)
 n_classes = len(class_names)
 
 # TODO: Train and evaluate your decision tree classifier over 10-fold CV.
+tree = DecisionTreeClassifier(criterion="entropy", max_depth=3)
+
 # Report average accuracy, precision and recall metrics.
 
 cv = cross_validation.KFold(n, n_folds=10, shuffle=False, random_state=None)
