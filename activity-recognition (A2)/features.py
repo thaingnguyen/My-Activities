@@ -48,5 +48,5 @@ def extract_features(window):
     """
     x = []
     x = np.append(x, _compute_statistical_features(window))
-    # x = np.append(x, _compute_magnitude_features(window))
+    x = np.append(x, _compute_magnitude_features(window))
     return x

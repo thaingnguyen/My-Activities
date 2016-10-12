@@ -30,11 +30,12 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from sklearn import svm
+from sklearn.svm import LinearSVC
 from features import extract_features # make sure features.py is in the same directory
 from util import slidingWindow, reorient, reset_vars
 from sklearn import cross_validation
-from sklearn.metrics import confusion_matrix
+from sklearn.base import clone
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score
 import pickle
 
 
@@ -88,6 +89,9 @@ feature_names = [
     "min X", "min Y", "min Z",
     "max X", "max Y", "max Z",
     ]
+for idx in xrange(window_size):
+    feature_names.append("magnitude " + str(idx))
+
 class_names = ["Stationary", "Walking"]
 
 print("Extracting features and labels for window size {} and step size {}...".format(window_size, step_size))
@@ -123,12 +127,19 @@ sys.stdout.flush()
 # It should be clear from the plot that these two features are alone very uninformative.
 print("Plotting data points...")
 sys.stdout.flush()
-plt.figure()
-formats = ['bo', 'go']
-for i in range(0,len(y),10): # only plot 1/10th of the points, it's a lot of data!
-    plt.plot(X[i,0], X[i,1], formats[int(y[i])])
+def plot_features(feature1, feature2, index1, index2):
+    plt.figure()
+    formats = ['bo', 'go']
+    for i in range(0,len(y),10): # only plot 1/10th of the points, it's a lot of data!
+        plt.plot(X[i,index1], X[i,index2], formats[int(y[i])])
+    plt.title("Relationship between " + feature1 + " and " + feature2)
+    plt.xlabel(feature1)
+    plt.ylabel(feature2)
+    plt.show()
 
-plt.show()
+plot_features("Mean Z", "Median Z", 2, 5)
+plot_features("Std Z", "Var Z", 8, 11)
+plot_features("Min Z", "Max Z", 14, 17)
 
 # %%---------------------------------------------------------------------------
 #
@@ -139,20 +150,43 @@ plt.show()
 n = len(y)
 n_classes = len(class_names)
 
-# TODO: Train and evaluate your decision tree classifier over 10-fold CV.
-# Report average accuracy, precision and recall metrics.
+def train_and_predict(name, model):
+    accuracies = []
+    precisions = []
+    recalls = []
+    cv = cross_validation.KFold(n, n_folds=10, shuffle=True, random_state=None)
 
-cv = cross_validation.KFold(n, n_folds=10, shuffle=False, random_state=None)
+    for i, (train_indexes, test_indexes) in enumerate(cv):
+        # print("Fold {}".format(i))
+        X_train = X[train_indexes]
+        X_test = X[test_indexes]
+        y_train = y[train_indexes]
+        y_test = y[test_indexes]
 
-for i, (train_indexes, test_indexes) in enumerate(cv):
-    print("Fold {}".format(i))
+        clf = clone(model)
+        clf.fit(X_train, y_train)
+        y_predict = clf.predict(X_test)
 
-# TODO: Evaluate another classifier, i.e. SVM, Logistic Regression, k-NN, etc.
+        accuracies.append(accuracy_score(y_test, y_predict))
+        precisions.append(precision_score(y_test, y_predict))
+        recalls.append(recall_score(y_test, y_predict))
+
+    print name
+    print "Average accuracy: " + str(np.mean(accuracies))
+    print "Average recall: " + str(np.mean(recalls))
+    print "Average precision: " + str(np.mean(precisions))
+
+train_and_predict("Decision Tree Max Depth 5", DecisionTreeClassifier(criterion="entropy", max_depth=5))
+train_and_predict("Decision Tree Max Depth 10", DecisionTreeClassifier(criterion="entropy", max_depth=10))
+train_and_predict("Decision Tree Max Features 5", DecisionTreeClassifier(criterion="entropy", max_features=5))
+train_and_predict("Decision Tree Max Features 10", DecisionTreeClassifier(criterion="entropy", max_features=10))
+train_and_predict("Linear SVC", LinearSVC())
 
 # TODO: Once you have collected data, train your best model on the entire
 # dataset. Then save it to disk as follows:
 
 # when ready, set this to the best model you found, trained on all the data:
-best_classifier = None
+best_classifier = DecisionTreeClassifier(criterion="entropy", max_depth=10)
+best_classifier.fit(X, y)
 with open('classifier.pickle', 'wb') as f: # 'wb' stands for 'write bytes'
     pickle.dump(best_classifier, f)
