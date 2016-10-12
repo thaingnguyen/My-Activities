@@ -47,7 +47,7 @@ import pickle
 
 print("Loading data...")
 sys.stdout.flush()
-data_file = os.path.join('data', 'activity-data.csv')
+data_file = os.path.join('data', 'sample-data.csv')
 data = np.genfromtxt(data_file, delimiter=',')
 print("Loaded {} raw labelled activity data samples.".format(len(data)))
 sys.stdout.flush()
@@ -184,7 +184,6 @@ train_and_predict("Linear SVC", LinearSVC())
 
 # TODO: Once you have collected data, train your best model on the entire
 # dataset. Then save it to disk as follows:
-
 # when ready, set this to the best model you found, trained on all the data:
 best_classifier = DecisionTreeClassifier(criterion="entropy", max_depth=10)
 best_classifier.fit(X, y)
