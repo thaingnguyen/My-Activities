@@ -18,6 +18,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -176,6 +177,8 @@ public class ExerciseFragment extends Fragment {
 
     /** Reference to the service manager which communicates to the {@link AccelerometerService}. **/
     private ServiceManager mServiceManager;
+
+    private boolean isStop = false;
 
     /**
      * The receiver listens for messages from the {@link AccelerometerService}, e.g. was the
@@ -363,10 +366,25 @@ public class ExerciseFragment extends Fragment {
         });
 
 
-//        mButton = view.getViewById;
-//        mButton.setOnClick (new )
+        final Button mButton = (Button) view.findViewById(R.id.activity_button);
+        mButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View vw) {
+                if (isStop) {
+                    mButton.setText("Start");
+                } else {
+                    mButton.setText("Stop");
+                }
+                isStop = !isStop;
+            }
+        });
+
+
         return view;
     }
+
+
+
 
     /**
      * When the fragment starts, register a {@link #receiver} to receive messages from the
