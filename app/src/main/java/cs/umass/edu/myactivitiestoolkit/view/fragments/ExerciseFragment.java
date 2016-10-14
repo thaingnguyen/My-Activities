@@ -10,7 +10,6 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
-import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
@@ -18,9 +17,12 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
 
 import com.androidplot.util.PixelUtils;
 import com.androidplot.xy.BoundaryMode;
@@ -37,15 +39,13 @@ import java.text.ParsePosition;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Locale;
-import java.lang.Math;
 import java.util.Queue;
-import java.util.concurrent.RunnableFuture;
 
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
-import cs.umass.edu.myactivitiestoolkit.services.msband.BandService;
 import cs.umass.edu.myactivitiestoolkit.services.AccelerometerService;
 import cs.umass.edu.myactivitiestoolkit.services.ServiceManager;
+import cs.umass.edu.myactivitiestoolkit.services.msband.BandService;
 
 /**
  * Fragment which visualizes the 3-axis accelerometer signal, displays the step count estimates and
@@ -113,6 +113,8 @@ public class ExerciseFragment extends Fragment {
     private Long timestamp;
 
     private Integer calcHeight;
+
+    private String mCurrentActivity;
 
     /** Displays the step count computed by your server-side step detection algorithm. **/
     private TextView txtServerStepCount;
@@ -335,6 +337,34 @@ public class ExerciseFragment extends Fragment {
         mPeakSeriesFormatter = new LineAndPointFormatter(null, Color.BLUE, null, null);
         mPeakSeriesFormatter.getVertexPaint().setStrokeWidth(PixelUtils.dpToPix(10)); //enlarge the peak points
 
+        Spinner spinner = (Spinner) view.findViewById(R.id.activity_spinner);
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(mActivity,
+                R.array.activity_array, android.R.layout.simple_spinner_item);
+        // Specify the layout to use when the list of choices appears
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        // Apply the adapter to the spinner
+        spinner.setAdapter(adapter);
+        // Add listener
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // Make sure that user cannot change activity while recording
+
+                mCurrentActivity = parent.getItemAtPosition(position).toString();
+                Log.d(TAG, "Current activity " + mCurrentActivity);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Make sure that user cannot start recording if no activity is selected
+
+            }
+        });
+
+
+//        mButton = view.getViewById;
+//        mButton.setOnClick (new )
         return view;
     }
 
