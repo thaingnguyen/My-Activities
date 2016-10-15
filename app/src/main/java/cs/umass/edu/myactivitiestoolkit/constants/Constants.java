@@ -27,6 +27,8 @@ public class Constants {
         String START_SERVICE = "edu.umass.cs.my-activities-toolkit.action.start-service";
         String STOP_SERVICE = "edu.umass.cs.my-activities-toolkit.action.stop-service";
         String NAVIGATE_TO_APP = "edu.umass.cs.my-activities-toolkit.action.navigate-to-app";
+        String UPDATE_ACTIVITY = "edu.umass.cs.my-activities-toolkit.action.update-activity";
+        String COLLECT_DATA = "edu.umass.cs.my-activities-toolkit.action.collect-data";
     }
 
     /**
@@ -55,6 +57,9 @@ public class Constants {
         String ACCELEROMETER_PEAK_TIMESTAMP = "edu.umass.cs.my-activities-toolkit.key.accelerometer-peak-timestamp";
         String ACCELEROMETER_PEAK_VALUE = "edu.umass.cs.my-activities-toolkit.key.accelerometer-peak-value";
         String NOTIFICATION_ID = "edu.umass.cs.my-activities-toolkit.key.sensor-service-type";
+        String IS_COLLECTING = "edu.umass.cs.my-activities-toolkit.key.is-collecting";
+        String LABELLED_ACTIVITY = "edu.umass.cs.my-activities-toolkit.key.labelled-activity";
+
     }
 
     /**

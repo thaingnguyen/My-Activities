@@ -111,6 +111,10 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     /** The step count as predicted by the server side algorithm. */
     private int mServerStepCount = 0;
 
+    private int mCurrentActivity;
+
+    private boolean isCollecting;
+
     private LocalBroadcastManager mLocalBroadcastManager;
 
     public AccelerometerService(){
@@ -138,6 +142,28 @@ public class AccelerometerService extends SensorService implements SensorEventLi
     @Override
     protected void onServiceStopped() {
         broadcastMessage(Constants.MESSAGE.ACCELEROMETER_SERVICE_STOPPED);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.i(TAG, intent.getAction());
+        if (intent.getAction() != null) {
+            if (intent.getAction().equals(Constants.ACTION.UPDATE_ACTIVITY)) {
+                String activity = intent.getStringExtra(Constants.KEY.LABELLED_ACTIVITY);
+                if (activity == "Jogging") {
+                    mCurrentActivity = 0;
+                } else if (activity == "Running") {
+                    mCurrentActivity = 1;
+                } else if (activity == "Biking") {
+                    mCurrentActivity = 2;
+                } else if (activity == "Jumping") {
+                    mCurrentActivity = 3;
+                }
+            } else if (intent.getAction().equals(Constants.ACTION.COLLECT_DATA)) {
+                isCollecting = intent.getBooleanExtra(Constants.KEY.IS_COLLECTING, false);
+            }
+        }
+        return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
@@ -257,7 +283,11 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
             broadcastAccelerometerReading(timestamp_in_milliseconds, values);
 
-            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
+//            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
+
+            if (isCollecting) {
+                mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, mCurrentActivity, values));
+            }
         } else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
 
             // we received a step event detected by the built-in Android step detector (assignment 1)
