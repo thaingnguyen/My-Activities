@@ -117,7 +117,7 @@ try:
                     z = data['data']['z']
                     label = data['label']
                     labelled_data.append([t, x, y, z, label])
-                    # print labelled_data
+                    print label
             sys.stdout.flush()
         except KeyboardInterrupt:
             # occurs when the user presses Ctrl-C
