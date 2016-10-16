@@ -13,6 +13,8 @@ import android.widget.EditText;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.HashMap;
+
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
 import cs.umass.edu.myactivitiestoolkit.processing.Filter;
@@ -115,6 +117,7 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
     private boolean isCollecting;
 
+    private HashMap<String, Integer> mActivityIds = new HashMap<>();
     private LocalBroadcastManager mLocalBroadcastManager;
 
     public AccelerometerService(){
@@ -132,6 +135,10 @@ public class AccelerometerService extends SensorService implements SensorEventLi
                 broadcastStepDetected(timestamp, values);
             }
         });
+        mActivityIds.put("Jogging", 0);
+        mActivityIds.put("Running", 1);
+        mActivityIds.put("Biking", 2);
+        mActivityIds.put("Jumping", 3);
     }
 
     @Override
@@ -150,15 +157,9 @@ public class AccelerometerService extends SensorService implements SensorEventLi
         if (intent.getAction() != null) {
             if (intent.getAction().equals(Constants.ACTION.UPDATE_ACTIVITY)) {
                 String activity = intent.getStringExtra(Constants.KEY.LABELLED_ACTIVITY);
-                if (activity == "Jogging") {
-                    mCurrentActivity = 0;
-                } else if (activity == "Running") {
-                    mCurrentActivity = 1;
-                } else if (activity == "Biking") {
-                    mCurrentActivity = 2;
-                } else if (activity == "Jumping") {
-                    mCurrentActivity = 3;
-                }
+                Log.i(TAG, activity);
+                mCurrentActivity = mActivityIds.get(activity);
+                Log.i(TAG, mCurrentActivity + "");
             } else if (intent.getAction().equals(Constants.ACTION.COLLECT_DATA)) {
                 isCollecting = intent.getBooleanExtra(Constants.KEY.IS_COLLECTING, false);
             }
