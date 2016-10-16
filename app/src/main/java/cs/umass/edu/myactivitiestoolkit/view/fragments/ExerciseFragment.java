@@ -178,7 +178,7 @@ public class ExerciseFragment extends Fragment {
     /** Reference to the service manager which communicates to the {@link AccelerometerService}. **/
     private ServiceManager mServiceManager;
 
-    private boolean isStop = false;
+    private boolean isCollecting = false;
 
     /**
      * The receiver listens for messages from the {@link AccelerometerService}, e.g. was the
@@ -307,8 +307,6 @@ public class ExerciseFragment extends Fragment {
 //                getResources().getString(R.string.pref_height_default)));
 //        Log.i(TAG, calcHeight.toString());
 
-
-
         // initialize plot and set plot parameters
         mPlot = (XYPlot) view.findViewById(R.id.accelerometerPlot);
         mPlot.setRangeBoundaries(-30, 30, BoundaryMode.FIXED);
@@ -355,7 +353,12 @@ public class ExerciseFragment extends Fragment {
                 // Make sure that user cannot change activity while recording
 
                 mCurrentActivity = parent.getItemAtPosition(position).toString();
-                Log.d(TAG, "Current activity " + mCurrentActivity);
+
+                // Send new activity to AccelerometerService
+                Intent intent = new Intent(mActivity, AccelerometerService.class);
+                intent.setAction(Constants.ACTION.UPDATE_ACTIVITY);
+                intent.putExtra(Constants.KEY.LABELLED_ACTIVITY, mCurrentActivity);
+                mActivity.startService(intent);
             }
 
             @Override
@@ -370,21 +373,23 @@ public class ExerciseFragment extends Fragment {
         mButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View vw) {
-                if (isStop) {
+                if (!isCollecting) {
                     mButton.setText("Start");
                 } else {
                     mButton.setText("Stop");
                 }
-                isStop = !isStop;
+                isCollecting = !isCollecting;
+
+                // Send new activity to AccelerometerService
+                Intent intent = new Intent(mActivity, AccelerometerService.class);
+                intent.setAction(Constants.ACTION.COLLECT_DATA);
+                intent.putExtra(Constants.KEY.IS_COLLECTING, isCollecting);
+                mActivity.startService(intent);
             }
         });
 
-
         return view;
     }
-
-
-
 
     /**
      * When the fragment starts, register a {@link #receiver} to receive messages from the

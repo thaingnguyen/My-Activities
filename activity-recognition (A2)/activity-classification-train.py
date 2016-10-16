@@ -47,7 +47,7 @@ import pickle
 
 print("Loading data...")
 sys.stdout.flush()
-data_file = os.path.join('data', 'sample-data.csv')
+data_file = os.path.join('data', 'activity-data.csv')
 data = np.genfromtxt(data_file, delimiter=',')
 print("Loaded {} raw labelled activity data samples.".format(len(data)))
 sys.stdout.flush()
@@ -172,6 +172,8 @@ def train_and_predict(name, model):
         recalls.append(recall_score(y_test, y_predict))
 
     print name
+    if name.startswith("Decision Tree"):
+        export_graphviz(clf, out_file=name + ".dot", feature_names = feature_names)
     print "Average accuracy: " + str(np.mean(accuracies))
     print "Average recall: " + str(np.mean(recalls))
     print "Average precision: " + str(np.mean(precisions))
