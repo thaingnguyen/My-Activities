@@ -41,9 +41,9 @@
     <string name="activity_jumping" formatted="false">Jumping</string>
 
     <string-array name="activity_array">
-        <item>Jogging</item>
+        <item>Sitting</item>
+        <item>Walking</item>
         <item>Running</item>
-        <item>Biking</item>
         <item>Jumping</item>
     </string-array>
 

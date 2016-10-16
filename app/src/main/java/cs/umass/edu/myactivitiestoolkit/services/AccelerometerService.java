@@ -135,9 +135,9 @@ public class AccelerometerService extends SensorService implements SensorEventLi
                 broadcastStepDetected(timestamp, values);
             }
         });
-        mActivityIds.put("Jogging", 0);
-        mActivityIds.put("Running", 1);
-        mActivityIds.put("Biking", 2);
+        mActivityIds.put("Sitting", 0);
+        mActivityIds.put("Walking", 1);
+        mActivityIds.put("Running", 2);
         mActivityIds.put("Jumping", 3);
     }
 
@@ -287,6 +287,7 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 //            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
 
             if (isCollecting) {
+                Log.d(TAG, "CURRENT ACTIVITY: " + mCurrentActivity);
                 mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, mCurrentActivity, values));
             }
         } else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {

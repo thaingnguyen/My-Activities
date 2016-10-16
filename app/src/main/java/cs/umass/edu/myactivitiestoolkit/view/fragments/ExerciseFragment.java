@@ -374,9 +374,9 @@ public class ExerciseFragment extends Fragment {
             @Override
             public void onClick(View vw) {
                 if (!isCollecting) {
-                    mButton.setText("Start");
-                } else {
                     mButton.setText("Stop");
+                } else {
+                    mButton.setText("Start");
                 }
                 isCollecting = !isCollecting;
 
