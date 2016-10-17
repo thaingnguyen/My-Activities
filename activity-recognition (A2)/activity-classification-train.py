@@ -47,7 +47,7 @@ import pickle
 
 print("Loading data...")
 sys.stdout.flush()
-data_file = os.path.join('data', 'activity-data.csv')
+data_file = os.path.join('data', 'uspace-data.csv')
 data = np.genfromtxt(data_file, delimiter=',')
 print("Loaded {} raw labelled activity data samples.".format(len(data)))
 sys.stdout.flush()
@@ -88,11 +88,13 @@ feature_names = [
     "var X", "var Y", "var Z",
     "min X", "min Y", "min Z",
     "max X", "max Y", "max Z",
+    "mean mag", "median mag", "std mag",
+    "var mag", "min mag", "max mag",
+    "entropy"
     ]
-for idx in xrange(window_size):
-    feature_names.append("magnitude " + str(idx))
 
-class_names = ["Stationary", "Walking"]
+# class_names = ["Stationary", "Walking"]
+class_names = ["Sitting", "Walking", "Running", "Jumping"]
 
 print("Extracting features and labels for window size {} and step size {}...".format(window_size, step_size))
 sys.stdout.flush()
@@ -137,9 +139,9 @@ def plot_features(feature1, feature2, index1, index2):
     plt.ylabel(feature2)
     plt.show()
 
-plot_features("Mean Z", "Median Z", 2, 5)
-plot_features("Std Z", "Var Z", 8, 11)
-plot_features("Min Z", "Max Z", 14, 17)
+# plot_features("Mean Z", "Median Z", 2, 5)
+# plot_features("Std Z", "Var Z", 8, 11)
+# plot_features("Min Z", "Max Z", 14, 17)
 
 # %%---------------------------------------------------------------------------
 #
@@ -168,12 +170,12 @@ def train_and_predict(name, model):
         y_predict = clf.predict(X_test)
 
         accuracies.append(accuracy_score(y_test, y_predict))
-        precisions.append(precision_score(y_test, y_predict))
-        recalls.append(recall_score(y_test, y_predict))
+        precisions.append(precision_score(y_test, y_predict, average = 'macro'))
+        recalls.append(recall_score(y_test, y_predict, average = 'macro'))
 
     print name
-    if name.startswith("Decision Tree"):
-        export_graphviz(clf, out_file=name + ".dot", feature_names = feature_names)
+    # if name.startswith("Decision Tree"):
+    #     export_graphviz(clf, out_file=name + ".dot", feature_names = feature_names)
     print "Average accuracy: " + str(np.mean(accuracies))
     print "Average recall: " + str(np.mean(recalls))
     print "Average precision: " + str(np.mean(precisions))
@@ -187,7 +189,7 @@ train_and_predict("Linear SVC", LinearSVC())
 # TODO: Once you have collected data, train your best model on the entire
 # dataset. Then save it to disk as follows:
 # when ready, set this to the best model you found, trained on all the data:
-best_classifier = DecisionTreeClassifier(criterion="entropy", max_depth=10)
+best_classifier = DecisionTreeClassifier(criterion="entropy", max_depth=5)
 best_classifier.fit(X, y)
 with open('classifier.pickle', 'wb') as f: # 'wb' stands for 'write bytes'
     pickle.dump(best_classifier, f)
