@@ -110,14 +110,13 @@ try:
                 sensor_type = data['sensor_type']
                 if (sensor_type == u"SENSOR_ACCEL" and 'label' in data):
                     print("Received Accelerometer data")
-                    # print(data)
                     t = data['data']['t']
                     x = data['data']['x']
                     y = data['data']['y']
                     z = data['data']['z']
                     label = data['label']
                     labelled_data.append([t, x, y, z, label])
-                    print label
+                    print [t,x,y,z,label]
             sys.stdout.flush()
         except KeyboardInterrupt:
             # occurs when the user presses Ctrl-C
