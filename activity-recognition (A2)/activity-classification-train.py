@@ -149,33 +149,35 @@ def plot_features(feature1, feature2, index1, index2):
 #
 # -----------------------------------------------------------------------------
 
-n = len(y)
+ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1234)
+
+n = len(y_train)
 n_classes = len(class_names)
 
 def train_and_predict(name, model):
     accuracies = []
     precisions = []
     recalls = []
-    cv = cross_validation.KFold(n, n_folds=10, shuffle=True, random_state=None)
+    cv = cross_validation.KFold(n, n_folds=10, shuffle=True, random_state=1234)
 
     for i, (train_indexes, test_indexes) in enumerate(cv):
         # print("Fold {}".format(i))
-        X_train = X[train_indexes]
-        X_test = X[test_indexes]
-        y_train = y[train_indexes]
-        y_test = y[test_indexes]
+        curr_X_train = X[train_indexes]
+        curr_X_test = X[test_indexes]
+        curr_y_train = y[train_indexes]
+        curr_y_test = y[test_indexes]
 
         clf = clone(model)
-        clf.fit(X_train, y_train)
-        y_predict = clf.predict(X_test)
+        clf.fit(curr_X_train, curr_y_train)
+        curr_y_predict = clf.predict(X_test)
 
-        accuracies.append(accuracy_score(y_test, y_predict))
-        precisions.append(precision_score(y_test, y_predict, average = 'macro'))
-        recalls.append(recall_score(y_test, y_predict, average = 'macro'))
+        accuracies.append(accuracy_score(curr_y_test, curr_y_predict))
+        precisions.append(precision_score(curr_y_test, curr_y_predict, average = 'macro'))
+        recalls.append(recall_score(curr_y_test, curr_y_predict, average = 'macro'))
 
     print name
-    # if name.startswith("Decision Tree"):
-    #     export_graphviz(clf, out_file=name + ".dot", feature_names = feature_names)
+    if name.startswith("Decision Tree"):
+        export_graphviz(clf, out_file=name + ".dot", feature_names = feature_names)
     print "Average accuracy: " + str(np.mean(accuracies))
     print "Average recall: " + str(np.mean(recalls))
     print "Average precision: " + str(np.mean(precisions))
