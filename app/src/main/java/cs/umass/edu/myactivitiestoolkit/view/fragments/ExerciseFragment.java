@@ -248,6 +248,11 @@ public class ExerciseFragment extends Fragment {
                         mPeakTimestamps.add(timestamp);
                         mPeakValues.add(values[2]); //place on z-axis signal
                     }
+                } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_ACTIVITY)) {
+                    String activity = intent.getStringExtra(Constants.KEY.ACTIVITY);
+                    if (!activity.equals(txtActivity.getText())) {
+                        txtActivity.setText(activity);
+                    }
                 }
             }
         }
@@ -350,7 +355,7 @@ public class ExerciseFragment extends Fragment {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                // Make sure that user cannot change activity while recording
+                // TODO: Make sure that user cannot change activity while recording
 
                 mCurrentActivity = parent.getItemAtPosition(position).toString();
 
@@ -363,11 +368,10 @@ public class ExerciseFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-                // Make sure that user cannot start recording if no activity is selected
+                // TODO: Make sure that user cannot start recording if no activity is selected
 
             }
         });
-
 
         final Button mButton = (Button) view.findViewById(R.id.activity_button);
         mButton.setOnClickListener(new View.OnClickListener() {
@@ -425,6 +429,7 @@ public class ExerciseFragment extends Fragment {
         filter.addAction(Constants.ACTION.BROADCAST_ANDROID_STEP_COUNT);
         filter.addAction(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT);
         filter.addAction(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT);
+        filter.addAction(Constants.ACTION.BROADCAST_ACTIVITY);
         broadcastManager.registerReceiver(receiver, filter);
 
 //        initial_timestamp = System.currentTimeMillis()/1000;

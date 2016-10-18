@@ -8,8 +8,6 @@ import android.hardware.SensorManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import android.widget.EditText;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -117,7 +115,10 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
     private boolean isCollecting;
 
-    private HashMap<String, Integer> mActivityIds = new HashMap<>();
+    private HashMap<String, Integer> mActivityNameToId = new HashMap<>();
+
+    private HashMap<Integer, String> mActivityIdToName = new HashMap<>();
+
     private LocalBroadcastManager mLocalBroadcastManager;
 
     public AccelerometerService(){
@@ -135,10 +136,17 @@ public class AccelerometerService extends SensorService implements SensorEventLi
                 broadcastStepDetected(timestamp, values);
             }
         });
-        mActivityIds.put("Sitting", 0);
-        mActivityIds.put("Walking", 1);
-        mActivityIds.put("Running", 2);
-        mActivityIds.put("Jumping", 3);
+
+        // Initialize activity maps
+        mActivityNameToId.put("Sitting", 0);
+        mActivityNameToId.put("Walking", 1);
+        mActivityNameToId.put("Running", 2);
+        mActivityNameToId.put("Jumping", 3);
+
+        mActivityIdToName.put(0, "Sitting");
+        mActivityIdToName.put(1, "Walking");
+        mActivityIdToName.put(2, "Running");
+        mActivityIdToName.put(4, "Jumping");
     }
 
     @Override
@@ -158,7 +166,7 @@ public class AccelerometerService extends SensorService implements SensorEventLi
             if (intent.getAction().equals(Constants.ACTION.UPDATE_ACTIVITY)) {
                 String activity = intent.getStringExtra(Constants.KEY.LABELLED_ACTIVITY);
                 Log.i(TAG, activity);
-                mCurrentActivity = mActivityIds.get(activity);
+                mCurrentActivity = mActivityNameToId.get(activity);
                 Log.i(TAG, mCurrentActivity + "");
             } else if (intent.getAction().equals(Constants.ACTION.COLLECT_DATA)) {
                 isCollecting = intent.getBooleanExtra(Constants.KEY.IS_COLLECTING, false);
@@ -192,11 +200,12 @@ public class AccelerometerService extends SensorService implements SensorEventLi
                 try {
                     JSONObject data = json.getJSONObject("data");
                     activity = data.getString("activity");
+                    Log.i(TAG, "Received activity " + mActivityIdToName.get(Integer.parseInt(activity)));
+                    broadcastActivity(mActivityIdToName.get(Integer.parseInt(activity)));
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return;
                 }
-                // TODO : broadcast activity to UI
             }
         });
     }
@@ -284,12 +293,12 @@ public class AccelerometerService extends SensorService implements SensorEventLi
 
             broadcastAccelerometerReading(timestamp_in_milliseconds, values);
 
-//            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
+            mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, values));
 
-            if (isCollecting) {
-                Log.d(TAG, "CURRENT ACTIVITY: " + mCurrentActivity);
-                mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, mCurrentActivity, values));
-            }
+//            if (isCollecting) {
+//                Log.d(TAG, "CURRENT ACTIVITY: " + mCurrentActivity);
+//                mClient.sendSensorReading(new AccelerometerReading(mUserID, "MOBILE", "", timestamp_in_milliseconds, mCurrentActivity, values));
+//            }
         } else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
 
             // we received a step event detected by the built-in Android step detector (assignment 1)
@@ -360,7 +369,6 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * to other application components, e.g. the main UI.
      */
     public void broadcastServerStepCount(int stepCount) {
-//        Log.i(TAG, "broadcast " + stepCount);
         mLocalBroadcastManager.sendBroadcast(
                 new Intent()
                     .putExtra(Constants.KEY.STEP_COUNT, stepCount)
@@ -372,11 +380,17 @@ public class AccelerometerService extends SensorService implements SensorEventLi
      * Use this if you would like to visualize the detected step on the accelerometer signal.
      */
     public void broadcastStepDetected(long timestamp, float[] values) {
-//        Log.d(TAG, timestamp + " " + values);
         mLocalBroadcastManager.sendBroadcast(
                 new Intent()
                     .putExtra(Constants.KEY.ACCELEROMETER_PEAK_TIMESTAMP, timestamp)
                     .putExtra(Constants.KEY.ACCELEROMETER_PEAK_VALUE, values)
                     .setAction(Constants.ACTION.BROADCAST_ACCELEROMETER_PEAK));
+    }
+
+    public void broadcastActivity(String activity) {
+        mLocalBroadcastManager.sendBroadcast(
+                new Intent()
+                    .putExtra(Constants.KEY.ACTIVITY, activity)
+                    .setAction(Constants.ACTION.BROADCAST_ACTIVITY));
     }
 }
