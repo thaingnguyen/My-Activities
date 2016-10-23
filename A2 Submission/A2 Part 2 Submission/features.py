@@ -27,14 +27,32 @@ def _compute_statistical_features(window):
     statistical_features = np.append(statistical_features, np.amax(window, axis=0))
     return statistical_features
 
+def _compute_magnitude(data_point):
+    magnitude = 0
+    for axis in data_point:
+        magnitude += axis ** 2
+    return math.sqrt(magnitude)
+
 def _compute_magnitude_features(window):
-    magnitudes = []
-    for data_point in window:
-        magnitude = 0
-        for axis in data_point:
-            magnitude += axis ** 2
-        magnitudes.append(math.sqrt(magnitude))
-    return np.asarray(magnitudes)
+    magnitudes = np.asarray(map(_compute_magnitude, window))
+
+    magnitude_features = []
+    magnitude_features = np.append(magnitude_features, np.mean(magnitudes))
+    magnitude_features = np.append(magnitude_features, np.median(magnitudes))
+    magnitude_features = np.append(magnitude_features, np.std(magnitudes))
+    magnitude_features = np.append(magnitude_features, np.var(magnitudes))
+    magnitude_features = np.append(magnitude_features, np.amin(magnitudes))
+    magnitude_features = np.append(magnitude_features, np.amax(magnitudes))
+
+    return magnitude_features
+
+def _compute_entropy_features(window):
+    hist = np.histogram(window, bins = 5)[0]
+    entropy = 0
+    for v in hist:
+        if v > 0:
+            entropy += -v * np.log(v)
+    return np.asarray([entropy])
 
 def extract_features(window):
     """
@@ -49,4 +67,5 @@ def extract_features(window):
     x = []
     x = np.append(x, _compute_statistical_features(window))
     x = np.append(x, _compute_magnitude_features(window))
+    x = np.append(x, _compute_entropy_features(window))
     return x

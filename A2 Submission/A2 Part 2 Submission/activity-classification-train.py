@@ -27,17 +27,18 @@ not complete.
 
 import os
 import sys
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import cross_validation
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from sklearn.svm import LinearSVC
+from sklearn.base import clone
+from sklearn.svm import LinearSVC, SVC
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, classification_report
+from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import GridSearchCV
 from features import extract_features # make sure features.py is in the same directory
 from util import slidingWindow, reorient, reset_vars
-from sklearn import cross_validation
-from sklearn.base import clone
-from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score
-import pickle
-
 
 # %%---------------------------------------------------------------------------
 #
@@ -88,11 +89,13 @@ feature_names = [
     "var X", "var Y", "var Z",
     "min X", "min Y", "min Z",
     "max X", "max Y", "max Z",
+    "mean mag", "median mag", "std mag",
+    "var mag", "min mag", "max mag",
+    "entropy"
     ]
-for idx in xrange(window_size):
-    feature_names.append("magnitude " + str(idx))
 
 class_names = ["Stationary", "Walking"]
+# class_names = ["Sitting", "Walking", "Running", "Jumping"]
 
 print("Extracting features and labels for window size {} and step size {}...".format(window_size, step_size))
 sys.stdout.flush()
@@ -137,9 +140,9 @@ def plot_features(feature1, feature2, index1, index2):
     plt.ylabel(feature2)
     plt.show()
 
-plot_features("Mean Z", "Median Z", 2, 5)
-plot_features("Std Z", "Var Z", 8, 11)
-plot_features("Min Z", "Max Z", 14, 17)
+# plot_features("Mean Z", "Median Z", 2, 5)
+# plot_features("Std Z", "Var Z", 8, 11)
+# plot_features("Min Z", "Max Z", 14, 17)
 
 # %%---------------------------------------------------------------------------
 #
@@ -147,47 +150,84 @@ plot_features("Min Z", "Max Z", 14, 17)
 #
 # -----------------------------------------------------------------------------
 
-n = len(y)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1234)
+n = len(y_train)
 n_classes = len(class_names)
 
 def train_and_predict(name, model):
     accuracies = []
     precisions = []
     recalls = []
-    cv = cross_validation.KFold(n, n_folds=10, shuffle=True, random_state=None)
+    cv = cross_validation.KFold(n, n_folds=10, shuffle=True, random_state=1234)
 
     for i, (train_indexes, test_indexes) in enumerate(cv):
         # print("Fold {}".format(i))
-        X_train = X[train_indexes]
-        X_test = X[test_indexes]
-        y_train = y[train_indexes]
-        y_test = y[test_indexes]
+        curr_X_train = X_train[train_indexes]
+        curr_X_val = X_train[test_indexes]
+        curr_y_train = y_train[train_indexes]
+        curr_y_val = y_train[test_indexes]
 
         clf = clone(model)
-        clf.fit(X_train, y_train)
-        y_predict = clf.predict(X_test)
+        clf.fit(curr_X_train, curr_y_train)
+        curr_y_predict = clf.predict(curr_X_val)
 
-        accuracies.append(accuracy_score(y_test, y_predict))
-        precisions.append(precision_score(y_test, y_predict))
-        recalls.append(recall_score(y_test, y_predict))
+        accuracies.append(accuracy_score(curr_y_val, curr_y_predict))
+        precisions.append(precision_score(curr_y_val, curr_y_predict))
+        recalls.append(recall_score(curr_y_val, curr_y_predict))
 
     print name
-    if name.startswith("Decision Tree"):
-        export_graphviz(clf, out_file=name + ".dot", feature_names = feature_names)
+    # Comment out for extra credit assignment
+    # if name.startswith("Decision Tree"):
+    #     export_graphviz(clf, out_file=name + ".dot", feature_names = feature_names)
     print "Average accuracy: " + str(np.mean(accuracies))
     print "Average recall: " + str(np.mean(recalls))
     print "Average precision: " + str(np.mean(precisions))
 
-train_and_predict("Decision Tree Max Depth 5", DecisionTreeClassifier(criterion="entropy", max_depth=5))
-train_and_predict("Decision Tree Max Depth 10", DecisionTreeClassifier(criterion="entropy", max_depth=10))
-train_and_predict("Decision Tree Max Features 5", DecisionTreeClassifier(criterion="entropy", max_features=5))
-train_and_predict("Decision Tree Max Features 10", DecisionTreeClassifier(criterion="entropy", max_features=10))
-train_and_predict("Linear SVC", LinearSVC())
+# Comment out for extra credit parameter learning
+# train_and_predict("Decision Tree Max Depth 5", DecisionTreeClassifier(criterion="entropy", max_depth=5))
+# train_and_predict("Decision Tree Max Depth 10", DecisionTreeClassifier(criterion="entropy", max_depth=10))
+# train_and_predict("Decision Tree Max Features 5", DecisionTreeClassifier(criterion="entropy", max_features=5))
+# train_and_predict("Decision Tree Max Features 10", DecisionTreeClassifier(criterion="entropy", max_features=10))
+# train_and_predict("Linear SVC", LinearSVC())
 
-# TODO: Once you have collected data, train your best model on the entire
-# dataset. Then save it to disk as follows:
-# when ready, set this to the best model you found, trained on all the data:
-best_classifier = DecisionTreeClassifier(criterion="entropy", max_depth=10)
-best_classifier.fit(X, y)
-with open('classifier.pickle', 'wb') as f: # 'wb' stands for 'write bytes'
-    pickle.dump(best_classifier, f)
+def parameter_learning(model, parameters):
+    clf = GridSearchCV(model, tuned_parameters, cv=5, verbose=3)
+    clf.fit(X_train, y_train)
+
+    print("Best parameters set found on development set:")
+    print()
+    print(clf.best_params_)
+    print()
+
+    y_true, y_pred = y_test, clf.predict(X_test)
+    print("Accuracy on held-out data: " + str(accuracy_score(y_true, y_pred)))
+    print("Recall on held-out data: " + str(recall_score(y_true, y_pred)))
+    print("Precision on held-out data: " + str(precision_score(y_true, y_pred)))
+
+    print()
+
+tuned_parameters = [{
+    'kernel': ['rbf'],
+    'gamma': [1e-2, 1e-3, 1e-4],
+    'C': [0.1, 1, 10, 100, 1000]
+}, {
+    'kernel': ['linear'],
+    'C': [0.1, 1, 10]
+}]
+parameter_learning(SVC(), tuned_parameters)
+# tuned_parameters = [{
+#     'criterion': ["gini", "entropy"],
+#     'max_depth': range(3, 22, 3),
+#     'max_features': range(3, 22, 3),
+# }]
+# parameter_learning(DecisionTreeClassifier(), tuned_parameters)
+
+# Report accuracy on held-out data
+# clf = DecisionTreeClassifier(criterion="entropy", max_depth=10)
+# clf.fit(X_train, y_train)
+
+# # Save model to disk
+# best_classifier = DecisionTreeClassifier(criterion="entropy", max_depth=10)
+# best_classifier.fit(X, y)
+# with open('classifier.pickle', 'wb') as f: # 'wb' stands for 'write bytes'
+#     pickle.dump(best_classifier, f)

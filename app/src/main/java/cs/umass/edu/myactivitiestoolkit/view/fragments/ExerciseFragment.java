@@ -250,7 +250,7 @@ public class ExerciseFragment extends Fragment {
                     }
                 } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_ACTIVITY)) {
                     String activity = intent.getStringExtra(Constants.KEY.ACTIVITY);
-                    if (!activity.equals(txtActivity.getText())) {
+                    if (activity != null && txtActivity != null && !activity.equals(txtActivity.getText())) {
                         txtActivity.setText(activity);
                     }
                 }
