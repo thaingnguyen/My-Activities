@@ -10,6 +10,9 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.WindowManager;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.ppg.HRSensorReading;
 import cs.umass.edu.myactivitiestoolkit.ppg.PPGSensorReading;
@@ -55,12 +58,19 @@ public class PPGService extends SensorService implements PPGListener
     /** used for debugging purposes */
     private static final String TAG = PPGService.class.getName();
 
+    private static final int MILLIS_PER_MINUTE = 1000 * 60;
+
     /* Surface view responsible for collecting PPG data and displaying the camera preview. */
     private HeartRateCameraView mPPGSensor;
+
+    private Filter mFilter;
+
+    private final Queue<PPGEvent> currentPeaks = new LinkedList<>();
 
     @Override
     protected void start() {
         Log.d(TAG, "START");
+        mFilter = new Filter(0.5);
         mPPGSensor = new HeartRateCameraView(getApplicationContext(), null);
 
         WindowManager winMan = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
@@ -111,7 +121,6 @@ public class PPGService extends SensorService implements PPGListener
 
     @Override
     protected void registerSensors() {
-        // TODO: Register a PPG listener with the PPG sensor (mPPGSensor)
         mPPGSensor.registerListener(this);
     }
 
@@ -159,16 +168,31 @@ public class PPGService extends SensorService implements PPGListener
     @SuppressWarnings("deprecation")
     @Override
     public void onSensorChanged(PPGEvent event) {
+        Log.i(TAG, event.value + "");
 
         // TODO: Smooth the signal using a Butterworth / exponential smoothing filter
-        // TODO: send the data to the UI fragment for visualization, using broadcastPPGReading(...)
-        // TODO: Send the filtered mean red value to the server
-        // TODO: Buffer data if necessary for your algorithm
-        // TODO: Call your heart beat and bpm detection algorithm
-        // TODO: Send your heart rate estimate to the server
+        //        filtervalues = mFilter.getFilteredValues(event.value);
 
-        Log.i(TAG, event.value + "");
+        // Send the data to the UI fragment for visualization
         broadcastPPGReading(event.timestamp, event.value);
+
+        // Send the filtered mean red value to the server
+        mClient.sendSensorReading(new PPGSensorReading(mUserID, "MOBILE", "", event.timestamp, event.value));
+
+        // TODO: Buffer data if necessary for your algorithm
+
+        // TODO: Call your heart beat and bpm detection algorithm
+        while (currentPeaks.size() > 0
+                && System.currentTimeMillis() - currentPeaks.peek().timestamp > MILLIS_PER_MINUTE) {
+            currentPeaks.remove();
+        }
+        if (isPeak(event)) {
+            currentPeaks.add(event);
+        }
+
+        // TODO: Send your heart rate estimate to UI and the server
+        broadcastBPM(currentPeaks.size());
+        mClient.sendSensorReading(new HRSensorReading(mUserID, "MOBILE", "", event.timestamp, currentPeaks.size()));
     }
 
     /**
@@ -207,5 +231,9 @@ public class PPGService extends SensorService implements PPGListener
         intent.setAction(Constants.ACTION.BROADCAST_PPG_PEAK);
         LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
         manager.sendBroadcast(intent);
+    }
+
+    private boolean isPeak(PPGEvent event) {
+        return event.value > 215;
     }
 }
