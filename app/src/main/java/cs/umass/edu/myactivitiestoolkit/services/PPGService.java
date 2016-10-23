@@ -112,11 +112,12 @@ public class PPGService extends SensorService implements PPGListener
     @Override
     protected void registerSensors() {
         // TODO: Register a PPG listener with the PPG sensor (mPPGSensor)
+        mPPGSensor.registerListener(this);
     }
 
     @Override
     protected void unregisterSensors() {
-        // TODO: Unregister the PPG listener
+        mPPGSensor.unregisterListeners();
     }
 
     @Override
@@ -158,12 +159,16 @@ public class PPGService extends SensorService implements PPGListener
     @SuppressWarnings("deprecation")
     @Override
     public void onSensorChanged(PPGEvent event) {
+
         // TODO: Smooth the signal using a Butterworth / exponential smoothing filter
         // TODO: send the data to the UI fragment for visualization, using broadcastPPGReading(...)
         // TODO: Send the filtered mean red value to the server
         // TODO: Buffer data if necessary for your algorithm
         // TODO: Call your heart beat and bpm detection algorithm
         // TODO: Send your heart rate estimate to the server
+
+        Log.i(TAG, event.value + "");
+        broadcastPPGReading(event.timestamp, event.value);
     }
 
     /**
