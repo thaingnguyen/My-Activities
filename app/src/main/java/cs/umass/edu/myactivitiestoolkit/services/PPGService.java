@@ -70,7 +70,7 @@ public class PPGService extends SensorService implements PPGListener
     @Override
     protected void start() {
         Log.d(TAG, "START");
-        mFilter = new Filter(0.5);
+        mFilter = new Filter(0.8);
         mPPGSensor = new HeartRateCameraView(getApplicationContext(), null);
 
         WindowManager winMan = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
@@ -168,16 +168,16 @@ public class PPGService extends SensorService implements PPGListener
     @SuppressWarnings("deprecation")
     @Override
     public void onSensorChanged(PPGEvent event) {
-        Log.i(TAG, event.value + "");
-
         // TODO: Smooth the signal using a Butterworth / exponential smoothing filter
-        //        filtervalues = mFilter.getFilteredValues(event.value);
+        double filteredValue = mFilter.getFilteredValues((long) event.value)[0];
+
+        Log.i(TAG, event.value + " " + filteredValue);
 
         // Send the data to the UI fragment for visualization
-        broadcastPPGReading(event.timestamp, event.value);
+        broadcastPPGReading(event.timestamp, filteredValue);
 
         // Send the filtered mean red value to the server
-        mClient.sendSensorReading(new PPGSensorReading(mUserID, "MOBILE", "", event.timestamp, event.value));
+        mClient.sendSensorReading(new PPGSensorReading(mUserID, "MOBILE", "", event.timestamp, filteredValue));
 
         // TODO: Buffer data if necessary for your algorithm
 
@@ -186,7 +186,7 @@ public class PPGService extends SensorService implements PPGListener
                 && System.currentTimeMillis() - currentPeaks.peek().timestamp > MILLIS_PER_MINUTE) {
             currentPeaks.remove();
         }
-        if (isPeak(event)) {
+        if (isPeak(filteredValue)) {
             currentPeaks.add(event);
         }
 
@@ -233,7 +233,7 @@ public class PPGService extends SensorService implements PPGListener
         manager.sendBroadcast(intent);
     }
 
-    private boolean isPeak(PPGEvent event) {
-        return event.value > 215;
+    private boolean isPeak(double value) {
+        return value > 215;
     }
 }
