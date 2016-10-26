@@ -10,7 +10,9 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.WindowManager;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 import cs.umass.edu.myactivitiestoolkit.R;
@@ -66,6 +68,8 @@ public class PPGService extends SensorService implements PPGListener
     private Filter mFilter;
 
     private final Queue<PPGEvent> currentPeaks = new LinkedList<>();
+
+    private final Queue<PPGEvent> buffer = new LinkedList<>();
 
     @Override
     protected void start() {
@@ -170,6 +174,10 @@ public class PPGService extends SensorService implements PPGListener
     public void onSensorChanged(PPGEvent event) {
         // TODO: Smooth the signal using a Butterworth / exponential smoothing filter
         double filteredValue = mFilter.getFilteredValues((long) event.value)[0];
+        long filteredValueTimestamp = event.timestamp;
+
+        //use this for peak detection
+        PPGEvent filteredEvent = new PPGEvent(filteredValue, filteredValueTimestamp);
 
         Log.i(TAG, event.value + " " + filteredValue);
 
@@ -180,13 +188,37 @@ public class PPGService extends SensorService implements PPGListener
         mClient.sendSensorReading(new PPGSensorReading(mUserID, "MOBILE", "", event.timestamp, filteredValue));
 
         // TODO: Buffer data if necessary for your algorithm
+        //one minute moving window
+        //use a queue
+        // enque when you find a peak
+        // deque when top of queue is a timestamp that is more than a minute ago
+        buffer.add(filteredEvent);
+        while (buffer.size() > 0
+                && System.currentTimeMillis() - buffer.peek().timestamp > MILLIS_PER_MINUTE) {
+            buffer.remove();
+        }
+
+        double min = 0;
+        double max = 0;
+        double threshold = 0;
+
+        for (PPGEvent sample : buffer) {
+            double sample_data = sample.value;
+            if (sample_data > max)
+                max = sample_data;
+            else if (sample_data < min)
+                min = sample_data;
+        }
+
+        threshold = (min + max)/2;
+
 
         // TODO: Call your heart beat and bpm detection algorithm
         while (currentPeaks.size() > 0
                 && System.currentTimeMillis() - currentPeaks.peek().timestamp > MILLIS_PER_MINUTE) {
             currentPeaks.remove();
         }
-        if (isPeak(filteredValue)) {
+        if (isUpwardCrossing(buffer, threshold, currentPeaks)) {
             currentPeaks.add(event);
         }
 
@@ -235,5 +267,39 @@ public class PPGService extends SensorService implements PPGListener
 
     private boolean isPeak(double value) {
         return value > 215;
+    }
+
+    boolean isUpwardCrossing(Queue<PPGEvent> events, double threshold, Queue<PPGEvent> curPeaks) {
+        //Get the values from the list of events
+        List<Double> values = new ArrayList<Double>();
+        for (PPGEvent event : events) {
+            values.add(event.value);
+        }
+        //Get the timestamps from the list of events
+        List<Long> timestamps = new ArrayList<Long>();
+        for (PPGEvent event : events) {
+            timestamps.add(event.timestamp);
+        }
+                for (int i = 0; i < values.size(); i++) {
+                        if (values.get(i) > values.get(i + 1)
+                                        && values.get(i-1) <= threshold
+                                        && values.get(i) >= threshold
+                                        && !containsTimestamp(timestamps.get(i), curPeaks))
+                                return true;
+                        }
+                return false;
+                }
+
+    /**
+     * Checks to make sure that we don't redetect a peak
+     * @param timestamp
+     * @return
+     */
+    boolean containsTimestamp(long timestamp, Queue<PPGEvent> curPeaks) {
+        for (PPGEvent event : curPeaks) {
+            if (event.timestamp == timestamp)
+                return true;
+        }
+        return false;
     }
 }
