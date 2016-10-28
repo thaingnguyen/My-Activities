@@ -209,7 +209,7 @@ public class PPGService extends SensorService implements PPGListener
         // Call your heart beat and bpm detection algorithm
         if (!buffer.isEmpty() && isPeak(buffer, threshold, event)) {
             currentPeaks.add(event);
-            // Calculate HRV
+            // EXTRA CREDIT: Calculate HRV
             if (!buffer.isEmpty()) {
                 hrv.add(event.timestamp - buffer.peek().timestamp);
             }
