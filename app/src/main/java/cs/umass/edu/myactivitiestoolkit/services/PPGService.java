@@ -73,6 +73,8 @@ public class PPGService extends SensorService implements PPGListener
 
     private final Queue<PPGEvent> buffer = new LinkedList<>();
 
+    private final Queue<Long> hrv = new LinkedList<>();
+
     @Override
     protected void start() {
         Log.d(TAG, "START");
@@ -207,6 +209,34 @@ public class PPGService extends SensorService implements PPGListener
         // Call your heart beat and bpm detection algorithm
         if (!buffer.isEmpty() && isPeak(buffer, threshold, event)) {
             currentPeaks.add(event);
+            // EXTRA CREDIT: Calculate HRV
+            if (!buffer.isEmpty()) {
+                hrv.add(event.timestamp - buffer.peek().timestamp);
+            }
+        }
+
+        // Remove old peaks in five minute window
+        while (hrv.size() > 0
+                && System.currentTimeMillis() - hrv.peek() > MILLIS_PER_MINUTE*5) {
+            hrv.remove();
+        }
+
+        // Calculate standard deviation
+        double standardDev = 0;
+        if (!hrv.isEmpty()) {
+            int average = 0;
+            for (Long timestamp : hrv) {
+                average += timestamp;
+            }
+            average /= hrv.size();
+            long variance = 0;
+            for (Long timestamp : hrv) {
+                long diff = average - timestamp;
+                diff *= diff;
+                variance += diff;
+            }
+            variance /= hrv.size();
+            standardDev = Math.sqrt(variance);
         }
 
         // Add event to a buffer of 3 seconds
@@ -216,8 +246,9 @@ public class PPGService extends SensorService implements PPGListener
             buffer.remove();
         }
 
-        // Send your heart rate estimate to UI and the server
+        // Send your heart rate and hrv estimate to UI and the server
         broadcastBPM(currentPeaks.size());
+       // broadcastHRV(standardDev);
         mClient.sendSensorReading(new HRSensorReading(mUserID, "MOBILE", "", event.timestamp, currentPeaks.size()));
     }
 
@@ -255,6 +286,18 @@ public class PPGService extends SensorService implements PPGListener
         intent.putExtra(Constants.KEY.PPG_PEAK_TIMESTAMP, timestamp);
         intent.putExtra(Constants.KEY.PPG_PEAK_VALUE, value);
         intent.setAction(Constants.ACTION.BROADCAST_PPG_PEAK);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
+    }
+
+    /**
+     * Broadcasts the current heart rate variation to other application components, e.g. the main UI.
+     * @param hrv the current hrv measurement.
+     */
+    public void broadcastHRV(final double hrv) {
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.HRV, hrv);
+        intent.setAction(Constants.ACTION.BROADCAST_HRV);
         LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
         manager.sendBroadcast(intent);
     }

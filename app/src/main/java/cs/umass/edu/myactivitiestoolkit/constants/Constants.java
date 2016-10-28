@@ -23,6 +23,7 @@ public class Constants {
         String BROADCAST_PPG_PEAK = "edu.umass.cs.my-activities-toolkit.action.broadcast-ppg-peak";
         String BROADCAST_ACCELEROMETER_PEAK = "edu.umass.cs.my-activities-toolkit.action.broadcast-accelerometer-peak";
         String BROADCAST_HEART_RATE = "edu.umass.cs.my-activities-toolkit.action.broadcast-heart-rate";
+        String BROADCAST_HRV = "edu.umass.cs.my-activities-toolkit.action.broadcast-hrv";
         String START_SERVICE = "edu.umass.cs.my-activities-toolkit.action.start-service";
         String STOP_SERVICE = "edu.umass.cs.my-activities-toolkit.action.stop-service";
         String NAVIGATE_TO_APP = "edu.umass.cs.my-activities-toolkit.action.navigate-to-app";
@@ -48,6 +49,7 @@ public class Constants {
         String TIMESTAMP = "edu.umass.cs.my-activities-toolkit.key.ppg-timestamp";
         String PPG_DATA = "edu.umass.cs.my-activities-toolkit.key.ppg-value";
         String HEART_RATE = "edu.umass.cs.my-activities-toolkit.key.heart-rate";
+        String HRV = "edu.umass.cs.my-activities-toolkit.key.hrv";
         String STEP_COUNT = "edu.umass.cs.my-activities-toolkit.key.step-count";
         String PPG_PEAK_TIMESTAMP = "edu.umass.cs.my-activities-toolkit.key.ppg-peak-timestamp";
         String PPG_PEAK_VALUE = "edu.umass.cs.my-activities-toolkit.key.ppg-peak-value";
