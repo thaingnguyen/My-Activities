@@ -62,6 +62,8 @@ public class PPGService extends SensorService implements PPGListener
 
     private static final int MILLIS_PER_MINUTE = 1000 * 60;
 
+    private static final int MILLIS_PER_SECOND = 1000;
+
     /* Surface view responsible for collecting PPG data and displaying the camera preview. */
     private HeartRateCameraView mPPGSensor;
 
@@ -74,7 +76,7 @@ public class PPGService extends SensorService implements PPGListener
     @Override
     protected void start() {
         Log.d(TAG, "START");
-        mFilter = new Filter(0.8);
+        mFilter = new Filter(4.0);
         mPPGSensor = new HeartRateCameraView(getApplicationContext(), null);
 
         WindowManager winMan = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
@@ -130,7 +132,9 @@ public class PPGService extends SensorService implements PPGListener
 
     @Override
     protected void unregisterSensors() {
-        mPPGSensor.unregisterListeners();
+        if (mPPGSensor != null) {
+            mPPGSensor.unregisterListeners();
+        }
     }
 
     @Override
@@ -172,36 +176,19 @@ public class PPGService extends SensorService implements PPGListener
     @SuppressWarnings("deprecation")
     @Override
     public void onSensorChanged(PPGEvent event) {
-        // TODO: Smooth the signal using a Butterworth / exponential smoothing filter
-        double filteredValue = mFilter.getFilteredValues((long) event.value)[0];
-        long filteredValueTimestamp = event.timestamp;
-
-        //use this for peak detection
-        PPGEvent filteredEvent = new PPGEvent(filteredValue, filteredValueTimestamp);
-
-        Log.i(TAG, event.value + " " + filteredValue);
+        // Smooth data (NOTE: Comment out for unsmoothed PPG signal)
+        event = new PPGEvent(mFilter.getFilteredValues((float) event.value)[0], event.timestamp);
 
         // Send the data to the UI fragment for visualization
-        broadcastPPGReading(event.timestamp, filteredValue);
+        broadcastPPGReading(event.timestamp, event.value);
 
         // Send the filtered mean red value to the server
-        mClient.sendSensorReading(new PPGSensorReading(mUserID, "MOBILE", "", event.timestamp, filteredValue));
+        mClient.sendSensorReading(new PPGSensorReading(mUserID, "MOBILE", "", event.timestamp, event.value));
 
-        // TODO: Buffer data if necessary for your algorithm
-        //one minute moving window
-        //use a queue
-        // enque when you find a peak
-        // deque when top of queue is a timestamp that is more than a minute ago
-        buffer.add(filteredEvent);
-        while (buffer.size() > 0
-                && System.currentTimeMillis() - buffer.peek().timestamp > MILLIS_PER_MINUTE) {
-            buffer.remove();
-        }
-
-        double min = 0;
-        double max = 0;
+        // Find threshold for zero crossing algorithm
+        double min = Double.MAX_VALUE;
+        double max = Double.MIN_VALUE;
         double threshold = 0;
-
         for (PPGEvent sample : buffer) {
             double sample_data = sample.value;
             if (sample_data > max)
@@ -209,20 +196,27 @@ public class PPGService extends SensorService implements PPGListener
             else if (sample_data < min)
                 min = sample_data;
         }
-
         threshold = (min + max)/2;
 
-
-        // TODO: Call your heart beat and bpm detection algorithm
+        // Remove old peaks in one minute window
         while (currentPeaks.size() > 0
                 && System.currentTimeMillis() - currentPeaks.peek().timestamp > MILLIS_PER_MINUTE) {
             currentPeaks.remove();
         }
-        if (isUpwardCrossing(buffer, threshold, currentPeaks)) {
+
+        // Call your heart beat and bpm detection algorithm
+        if (!buffer.isEmpty() && isPeak(buffer, threshold, event)) {
             currentPeaks.add(event);
         }
 
-        // TODO: Send your heart rate estimate to UI and the server
+        // Add event to a buffer of 3 seconds
+        buffer.add(event);
+        while (buffer.size() > 0
+                && System.currentTimeMillis() - buffer.peek().timestamp > MILLIS_PER_SECOND * 3) {
+            buffer.remove();
+        }
+
+        // Send your heart rate estimate to UI and the server
         broadcastBPM(currentPeaks.size());
         mClient.sendSensorReading(new HRSensorReading(mUserID, "MOBILE", "", event.timestamp, currentPeaks.size()));
     }
@@ -265,41 +259,13 @@ public class PPGService extends SensorService implements PPGListener
         manager.sendBroadcast(intent);
     }
 
-    private boolean isPeak(double value) {
-        return value > 215;
-    }
+    boolean isPeak(Queue<PPGEvent> buffer, double threshold, PPGEvent event) {
+        List<PPGEvent> events = new ArrayList<>(buffer);
+        PPGEvent lastEvent = events.get(events.size()-1);
 
-    boolean isUpwardCrossing(Queue<PPGEvent> events, double threshold, Queue<PPGEvent> curPeaks) {
-        //Get the values from the list of events
-        List<Double> values = new ArrayList<Double>();
-        for (PPGEvent event : events) {
-            values.add(event.value);
-        }
-        //Get the timestamps from the list of events
-        List<Long> timestamps = new ArrayList<Long>();
-        for (PPGEvent event : events) {
-            timestamps.add(event.timestamp);
-        }
-                for (int i = 0; i < values.size(); i++) {
-                        if (values.get(i) > values.get(i + 1)
-                                        && values.get(i-1) <= threshold
-                                        && values.get(i) >= threshold
-                                        && !containsTimestamp(timestamps.get(i), curPeaks))
-                                return true;
-                        }
-                return false;
-                }
-
-    /**
-     * Checks to make sure that we don't redetect a peak
-     * @param timestamp
-     * @return
-     */
-    boolean containsTimestamp(long timestamp, Queue<PPGEvent> curPeaks) {
-        for (PPGEvent event : curPeaks) {
-            if (event.timestamp == timestamp)
-                return true;
-        }
-        return false;
+        Log.i(TAG, "last: " + lastEvent.value + " " + "current: " + event.value + " " + threshold);
+        return event.value > lastEvent.value
+            && lastEvent.value < threshold
+            && event.value > threshold;
     }
 }

@@ -225,7 +225,7 @@ public class HeartRateCameraView extends SurfaceView implements Callback, Camera
         //Collect color data and store them but now replacing each frame with new frame
         ImageFormatConverter.decodeYUV420SP(pixels, data, width, height);
 
-        //TODO: Compute the mean red value and notify all listeners
+        //Compute the mean red value and notify all listeners
         int redSum = 0;
         for (int pixel: pixels) {
             redSum += Color.red(pixel);
