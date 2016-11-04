@@ -10,7 +10,6 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
-import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
@@ -18,9 +17,13 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
 
 import com.androidplot.util.PixelUtils;
 import com.androidplot.xy.BoundaryMode;
@@ -37,15 +40,13 @@ import java.text.ParsePosition;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Locale;
-import java.lang.Math;
 import java.util.Queue;
-import java.util.concurrent.RunnableFuture;
 
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
-import cs.umass.edu.myactivitiestoolkit.services.msband.BandService;
 import cs.umass.edu.myactivitiestoolkit.services.AccelerometerService;
 import cs.umass.edu.myactivitiestoolkit.services.ServiceManager;
+import cs.umass.edu.myactivitiestoolkit.services.msband.BandService;
 
 /**
  * Fragment which visualizes the 3-axis accelerometer signal, displays the step count estimates and
@@ -114,6 +115,8 @@ public class ExerciseFragment extends Fragment {
 
     private Integer calcHeight;
 
+    private String mCurrentActivity;
+
     /** Displays the step count computed by your server-side step detection algorithm. **/
     private TextView txtServerStepCount;
 
@@ -174,6 +177,8 @@ public class ExerciseFragment extends Fragment {
 
     /** Reference to the service manager which communicates to the {@link AccelerometerService}. **/
     private ServiceManager mServiceManager;
+
+    private boolean isCollecting = false;
 
     /**
      * The receiver listens for messages from the {@link AccelerometerService}, e.g. was the
@@ -243,6 +248,11 @@ public class ExerciseFragment extends Fragment {
                         mPeakTimestamps.add(timestamp);
                         mPeakValues.add(values[2]); //place on z-axis signal
                     }
+                } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_ACTIVITY)) {
+                    String activity = intent.getStringExtra(Constants.KEY.ACTIVITY);
+                    if (activity != null && txtActivity != null && !activity.equals(txtActivity.getText())) {
+                        txtActivity.setText(activity);
+                    }
                 }
             }
         }
@@ -302,8 +312,6 @@ public class ExerciseFragment extends Fragment {
 //                getResources().getString(R.string.pref_height_default)));
 //        Log.i(TAG, calcHeight.toString());
 
-
-
         // initialize plot and set plot parameters
         mPlot = (XYPlot) view.findViewById(R.id.accelerometerPlot);
         mPlot.setRangeBoundaries(-30, 30, BoundaryMode.FIXED);
@@ -334,6 +342,55 @@ public class ExerciseFragment extends Fragment {
 
         mPeakSeriesFormatter = new LineAndPointFormatter(null, Color.BLUE, null, null);
         mPeakSeriesFormatter.getVertexPaint().setStrokeWidth(PixelUtils.dpToPix(10)); //enlarge the peak points
+
+        Spinner spinner = (Spinner) view.findViewById(R.id.activity_spinner);
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(mActivity,
+                R.array.activity_array, android.R.layout.simple_spinner_item);
+        // Specify the layout to use when the list of choices appears
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        // Apply the adapter to the spinner
+        spinner.setAdapter(adapter);
+        // Add listener
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // TODO: Make sure that user cannot change activity while recording
+
+                mCurrentActivity = parent.getItemAtPosition(position).toString();
+
+                // Send new activity to AccelerometerService
+                Intent intent = new Intent(mActivity, AccelerometerService.class);
+                intent.setAction(Constants.ACTION.UPDATE_ACTIVITY);
+                intent.putExtra(Constants.KEY.LABELLED_ACTIVITY, mCurrentActivity);
+                mActivity.startService(intent);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // TODO: Make sure that user cannot start recording if no activity is selected
+
+            }
+        });
+
+        final Button mButton = (Button) view.findViewById(R.id.activity_button);
+        mButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View vw) {
+                if (!isCollecting) {
+                    mButton.setText("Stop");
+                } else {
+                    mButton.setText("Start");
+                }
+                isCollecting = !isCollecting;
+
+                // Send new activity to AccelerometerService
+                Intent intent = new Intent(mActivity, AccelerometerService.class);
+                intent.setAction(Constants.ACTION.COLLECT_DATA);
+                intent.putExtra(Constants.KEY.IS_COLLECTING, isCollecting);
+                mActivity.startService(intent);
+            }
+        });
 
         return view;
     }
@@ -372,6 +429,7 @@ public class ExerciseFragment extends Fragment {
         filter.addAction(Constants.ACTION.BROADCAST_ANDROID_STEP_COUNT);
         filter.addAction(Constants.ACTION.BROADCAST_LOCAL_STEP_COUNT);
         filter.addAction(Constants.ACTION.BROADCAST_SERVER_STEP_COUNT);
+        filter.addAction(Constants.ACTION.BROADCAST_ACTIVITY);
         broadcastManager.registerReceiver(receiver, filter);
 
 //        initial_timestamp = System.currentTimeMillis()/1000;

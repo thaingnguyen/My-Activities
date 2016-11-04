@@ -37,6 +37,20 @@
 
     <string name="calories_burned" formatted="false">Calories: %d</string>
 
+    <string name="activity_running" formatted="false">Running</string>
+    <string name="activity_jumping" formatted="false">Jumping</string>
+
+    <string-array name="activity_array">
+        <item>Sitting</item>
+        <item>Walking</item>
+        <item>Running</item>
+        <item>Jumping</item>
+    </string-array>
+
+    <string name="activity_start">Start</string>
+    <string name="activity_stop">Stop</string>
+
+
     <string name="speaker" formatted="false">Speaker: %s</string>
     <string name="speaker_initial">Speaker: None</string>
 
