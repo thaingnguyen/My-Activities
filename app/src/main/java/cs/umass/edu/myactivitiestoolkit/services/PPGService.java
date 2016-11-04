@@ -10,6 +10,11 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.WindowManager;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.ppg.HRSensorReading;
 import cs.umass.edu.myactivitiestoolkit.ppg.PPGSensorReading;
@@ -55,12 +60,25 @@ public class PPGService extends SensorService implements PPGListener
     /** used for debugging purposes */
     private static final String TAG = PPGService.class.getName();
 
+    private static final int MILLIS_PER_MINUTE = 1000 * 60;
+
+    private static final int MILLIS_PER_SECOND = 1000;
+
     /* Surface view responsible for collecting PPG data and displaying the camera preview. */
     private HeartRateCameraView mPPGSensor;
+
+    private Filter mFilter;
+
+    private final Queue<PPGEvent> currentPeaks = new LinkedList<>();
+
+    private final Queue<PPGEvent> buffer = new LinkedList<>();
+
+    private final Queue<Long> hrv = new LinkedList<>();
 
     @Override
     protected void start() {
         Log.d(TAG, "START");
+        mFilter = new Filter(4.0);
         mPPGSensor = new HeartRateCameraView(getApplicationContext(), null);
 
         WindowManager winMan = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
@@ -111,12 +129,14 @@ public class PPGService extends SensorService implements PPGListener
 
     @Override
     protected void registerSensors() {
-        // TODO: Register a PPG listener with the PPG sensor (mPPGSensor)
+        mPPGSensor.registerListener(this);
     }
 
     @Override
     protected void unregisterSensors() {
-        // TODO: Unregister the PPG listener
+        if (mPPGSensor != null) {
+            mPPGSensor.unregisterListeners();
+        }
     }
 
     @Override
@@ -158,12 +178,78 @@ public class PPGService extends SensorService implements PPGListener
     @SuppressWarnings("deprecation")
     @Override
     public void onSensorChanged(PPGEvent event) {
-        // TODO: Smooth the signal using a Butterworth / exponential smoothing filter
-        // TODO: send the data to the UI fragment for visualization, using broadcastPPGReading(...)
-        // TODO: Send the filtered mean red value to the server
-        // TODO: Buffer data if necessary for your algorithm
-        // TODO: Call your heart beat and bpm detection algorithm
-        // TODO: Send your heart rate estimate to the server
+        // Smooth data (NOTE: Comment out for unsmoothed PPG signal)
+        event = new PPGEvent(mFilter.getFilteredValues((float) event.value)[0], event.timestamp);
+
+        // Send the data to the UI fragment for visualization
+        broadcastPPGReading(event.timestamp, event.value);
+
+        // Send the filtered mean red value to the server
+        mClient.sendSensorReading(new PPGSensorReading(mUserID, "MOBILE", "", event.timestamp, event.value));
+
+        // Find threshold for zero crossing algorithm
+        double min = Double.MAX_VALUE;
+        double max = Double.MIN_VALUE;
+        double threshold = 0;
+        for (PPGEvent sample : buffer) {
+            double sample_data = sample.value;
+            if (sample_data > max)
+                max = sample_data;
+            else if (sample_data < min)
+                min = sample_data;
+        }
+        threshold = (min + max)/2;
+
+        // Remove old peaks in one minute window
+        while (currentPeaks.size() > 0
+                && System.currentTimeMillis() - currentPeaks.peek().timestamp > MILLIS_PER_MINUTE) {
+            currentPeaks.remove();
+        }
+
+        // Call your heart beat and bpm detection algorithm
+        if (!buffer.isEmpty() && isPeak(buffer, threshold, event)) {
+            currentPeaks.add(event);
+            // EXTRA CREDIT: Calculate HRV
+            if (!buffer.isEmpty()) {
+                hrv.add(event.timestamp - buffer.peek().timestamp);
+            }
+        }
+
+        // Remove old peaks in five minute window
+        while (hrv.size() > 0
+                && System.currentTimeMillis() - hrv.peek() > MILLIS_PER_MINUTE*5) {
+            hrv.remove();
+        }
+
+        // Calculate standard deviation
+        double standardDev = 0;
+        if (!hrv.isEmpty()) {
+            int average = 0;
+            for (Long timestamp : hrv) {
+                average += timestamp;
+            }
+            average /= hrv.size();
+            long variance = 0;
+            for (Long timestamp : hrv) {
+                long diff = average - timestamp;
+                diff *= diff;
+                variance += diff;
+            }
+            variance /= hrv.size();
+            standardDev = Math.sqrt(variance);
+        }
+
+        // Add event to a buffer of 3 seconds
+        buffer.add(event);
+        while (buffer.size() > 0
+                && System.currentTimeMillis() - buffer.peek().timestamp > MILLIS_PER_SECOND * 3) {
+            buffer.remove();
+        }
+
+        // Send your heart rate and hrv estimate to UI and the server
+        broadcastBPM(currentPeaks.size());
+       // broadcastHRV(standardDev);
+        mClient.sendSensorReading(new HRSensorReading(mUserID, "MOBILE", "", event.timestamp, currentPeaks.size()));
     }
 
     /**
@@ -202,5 +288,27 @@ public class PPGService extends SensorService implements PPGListener
         intent.setAction(Constants.ACTION.BROADCAST_PPG_PEAK);
         LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
         manager.sendBroadcast(intent);
+    }
+
+    /**
+     * Broadcasts the current heart rate variation to other application components, e.g. the main UI.
+     * @param hrv the current hrv measurement.
+     */
+    public void broadcastHRV(final double hrv) {
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.HRV, hrv);
+        intent.setAction(Constants.ACTION.BROADCAST_HRV);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
+    }
+
+    boolean isPeak(Queue<PPGEvent> buffer, double threshold, PPGEvent event) {
+        List<PPGEvent> events = new ArrayList<>(buffer);
+        PPGEvent lastEvent = events.get(events.size()-1);
+
+        Log.i(TAG, "last: " + lastEvent.value + " " + "current: " + event.value + " " + threshold);
+        return event.value > lastEvent.value
+            && lastEvent.value < threshold
+            && event.value > threshold;
     }
 }
