@@ -8,6 +8,8 @@ import org.imirsel.m2k.util.Window;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Arrays;
+
 import at.tuwien.ifs.feature.extraction.audio.spectrum.Spectrogram;
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.audio.AudioBufferReading;
@@ -142,7 +144,11 @@ public class AudioService extends SensorService implements MicrophoneRecorder.Mi
     public void microphoneBuffer(short[] buffer, int window_size) {
         Log.d(TAG, String.valueOf(buffer.length));
 
-        //TODO: Send the audio buffer to the server
+        Log.d(TAG, "Array " + Arrays.toString(buffer));
+
+        Log.d(TAG, "toString " + buffer.toString());
+
+        mClient.sendSensorReading(new AudioBufferReading(mUserID, "MOBILE", "", System.currentTimeMillis(), buffer));
 
         //convert short[] to double[] for computing spectrogram
         double[] dBuffer = new double[buffer.length];
