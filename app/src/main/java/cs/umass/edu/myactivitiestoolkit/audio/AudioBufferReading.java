@@ -1,5 +1,6 @@
 package cs.umass.edu.myactivitiestoolkit.audio;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -41,7 +42,8 @@ public class AudioBufferReading extends SensorReading {
 
         try {
             data.put("t", timestamp);
-            data.put("values", buffer);
+            JSONArray audioBuffer = new JSONArray(buffer);
+            data.put("values", audioBuffer);
             obj.put("data", data);
         } catch (JSONException e) {
             e.printStackTrace();
