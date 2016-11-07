@@ -6,10 +6,10 @@ Created on Wed Sep 21 16:02:58 2016
 
 Assignment 3 : Speaker Identification
 
-This is the starter script for training a model for identifying 
-speaker from audio data. The script loads all labelled speaker 
-audio data files in the specified directory. It extracts features 
-from the raw data and trains and evaluates a classifier to identify 
+This is the starter script for training a model for identifying
+speaker from audio data. The script loads all labelled speaker
+audio data files in the specified directory. It extracts features
+from the raw data and trains and evaluates a classifier to identify
 the speaker.
 
 """
@@ -23,6 +23,9 @@ from sklearn.tree import DecisionTreeClassifier # decision tree classifier
 from sklearn.ensemble import RandomForestClassifier # random forest classifier
 from sklearn.neighbors import NearestNeighbors # k-nearest neighbors (k-NN) classiifer
 from sklearn.svm import SVC #SVM classifier
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, classification_report
+from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import GridSearchCV
 
 from features import FeatureExtractor
 from sklearn import cross_validation
@@ -43,7 +46,7 @@ output_dir = 'training_output' # directory where the classifier(s) are stored
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 
-# the filenames should be in the form 'speaker-data-subject-1.csv', e.g. 'speaker-data-Erik-1.csv'. If they 
+# the filenames should be in the form 'speaker-data-subject-1.csv', e.g. 'speaker-data-Erik-1.csv'. If they
 # are not, that's OK but the progress output will look nonsensical
 
 class_names = [] # the set of classes, i.e. speakers
@@ -75,7 +78,7 @@ print("Found data for {} speakers : {}".format(len(class_names), ", ".join(class
 
 # You may need to change n_features depending on how you compute your features
 # we have it set to 3 to match the dummy values we return in the starter code.
-n_features = 3
+n_features = 11
 
 print("Extracting features and labels for {} audio windows...".format(data.shape[0]))
 sys.stdout.flush()
@@ -84,20 +87,20 @@ X = np.zeros((0,n_features))
 y = np.zeros(0,)
 
 # change debug to True to show print statements we've included:
-feature_extractor = FeatureExtractor(debug=False) 
+feature_extractor = FeatureExtractor(debug=False)
 
 for i,window_with_timestamp_and_label in enumerate(data):
     window = window_with_timestamp_and_label[1:-1] # get window without timestamp/label
     label = data[i,-1] # get label
     x = feature_extractor.extract_features(window)  # extract features
-    
+
     # if # of features don't match, we'll tell you!
     if (len(x) != X.shape[1]):
         print("Received feature vector of length {}. Expected feature vector of length {}.".format(len(x), X.shape[1]))
-        
+
     X = np.append(X, np.reshape(x, (1,-1)), axis=0)
     y = np.append(y, label)
-    
+
 print("Finished feature extraction over {} windows".format(len(X)))
 print("Unique labels found: {}".format(set(y)))
 sys.stdout.flush()
@@ -111,12 +114,34 @@ sys.stdout.flush()
 
 n = len(y)
 n_classes = len(class_names)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1234)
 
-# TODO: Train your classifier!
+def parameter_learning(model, parameters):
+    clf = GridSearchCV(model, tuned_parameters, cv=5, verbose=3)
+    clf.fit(X_train, y_train)
+
+    print("Best parameters set found on development set:")
+    print()
+    print(clf.best_params_)
+    print()
+
+    y_true, y_pred = y_test, clf.predict(X_test)
+    print("Accuracy on held-out data: " + str(accuracy_score(y_true, y_pred)))
+    print("Recall on held-out data: " + str(recall_score(y_true, y_pred)))
+    print("Precision on held-out data: " + str(precision_score(y_true, y_pred)))
+
+    print()
+
+tuned_parameters = [{
+    'criterion': ["gini", "entropy"],
+    'max_depth': range(3, 22, 3),
+    'max_features': range(2, 10, 2),
+}]
+parameter_learning(DecisionTreeClassifier(), tuned_parameters)
 
 # TODO: set your best classifier below, then uncomment the following line to train it on ALL the data:
 best_classifier = None
-# best_classifier.fit(X,y) 
+# best_classifier.fit(X,y)
 
 classifier_filename='classifier.pickle'
 print("Saving best classifier to {}...".format(os.path.join(output_dir, classifier_filename)))
