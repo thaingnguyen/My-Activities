@@ -17,15 +17,17 @@ import json
 import numpy as np
 import os
 
+import datetime
+
 # TODO: Replace the string with your user ID
 user_id = "75.6d.a4.38.38.e7.2d.96.76.a9"
 
 # TODO: Change the filename of the output file.
 # You should keep it in the format "speaker-data-<speaker>-#.csv"
-filename="speaker-data-HenryVIII-1.csv"
+filename="speaker-data-Jared-1.csv"
 
 # TODO: Change the label to match the speaker; it must be numeric
-label = 0
+label = 3
 
 data_dir = "data"
 
@@ -122,7 +124,8 @@ try:
                 if (sensor_type == u"SENSOR_AUDIO"):
                     t = data['data']['t']
                     audio_buffer=data['data']['values']
-                    print("Received audio data of length {}".format(len(audio_buffer)))
+                    print("Received audio data of length ".format(len(audio_buffer)) + "Time: " 
+                        + datetime.datetime.now().strftime("%I:%M%p") + " speaker-label: " + str(label))
                     labelled_instance = [t]
                     labelled_instance.extend(audio_buffer)
                     labelled_instance.append(label)
