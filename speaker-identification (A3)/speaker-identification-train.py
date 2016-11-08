@@ -78,7 +78,7 @@ print("Found data for {} speakers : {}".format(len(class_names), ", ".join(class
 
 # You may need to change n_features depending on how you compute your features
 # we have it set to 3 to match the dummy values we return in the starter code.
-n_features = 11
+n_features = 995
 
 print("Extracting features and labels for {} audio windows...".format(data.shape[0]))
 sys.stdout.flush()
@@ -127,21 +127,19 @@ def parameter_learning(model, parameters):
 
     y_true, y_pred = y_test, clf.predict(X_test)
     print("Accuracy on held-out data: " + str(accuracy_score(y_true, y_pred)))
-    print("Recall on held-out data: " + str(recall_score(y_true, y_pred)))
-    print("Precision on held-out data: " + str(precision_score(y_true, y_pred)))
+    print("Recall on held-out data: " + str(recall_score(y_true, y_pred, average='macro')))
+    print("Precision on held-out data: " + str(precision_score(y_true, y_pred, average='macro')))
 
     print()
 
 tuned_parameters = [{
     'criterion': ["gini", "entropy"],
     'max_depth': range(3, 22, 3),
-    'max_features': range(2, 10, 2),
 }]
 parameter_learning(DecisionTreeClassifier(), tuned_parameters)
 
-# TODO: set your best classifier below, then uncomment the following line to train it on ALL the data:
-best_classifier = None
-# best_classifier.fit(X,y)
+best_classifier = DecisionTreeClassifier(criterion='gini', max_depth=3)
+best_classifier.fit(X,y)
 
 classifier_filename='classifier.pickle'
 print("Saving best classifier to {}...".format(os.path.join(output_dir, classifier_filename)))

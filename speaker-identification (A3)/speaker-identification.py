@@ -6,8 +6,8 @@ Assignment A0 : Data Collection
 
 @author: cs390mb
 
-This Python script receives incoming unlabelled audio data through 
-the server and uses your trained classifier to predict the speaker. 
+This Python script receives incoming unlabelled audio data through
+the server and uses your trained classifier to predict the speaker.
 The label is then sent back to the Android application via the server.
 
 """
@@ -26,8 +26,8 @@ user_id = "75.6d.a4.38.38.e7.2d.96.76.a9"
 
 '''
     This socket is used to send data back through the data collection server.
-    It is used to complete the authentication. It may also be used to send 
-    data or notifications back to the phone, but we will not be using that 
+    It is used to complete the authentication. It may also be used to send
+    data or notifications back to the phone, but we will not be using that
     functionality in this assignment.
 '''
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,13 +40,13 @@ classifier_filename = 'classifier.pickle'
 
 with open(os.path.join(output_dir, classifier_filename), 'rb') as f:
     classifier = pickle.load(f)
-    
+
 if classifier == None:
     print("Classifier is null; make sure you have trained it!")
     sys.exit()
-    
+
 feature_extractor = FeatureExtractor(debug=False)
-    
+
 def onSpeakerDetected(speaker):
     """
     Notifies the client of the current speaker
@@ -57,23 +57,22 @@ def onSpeakerDetected(speaker):
 
 def predict(window):
     """
-    Given a window of audio data, predict the speaker. 
-    Then use the onSpeakerDetected(speaker) method to notify the 
-    Android application. You must use the same feature 
+    Given a window of audio data, predict the speaker.
+    Then use the onSpeakerDetected(speaker) method to notify the
+    Android application. You must use the same feature
     extraction method that you used to train the model.
     """
-    
-    # TODO: Extract features and predict class label
-    
-    # You may need to reshape your feature vector into a 1 X d matrix as follows:
-    # X = np.reshape(X,(1,-1))
-    
+    x = feature_extractor.extract_features(window)
+    X = np.append(X, np.reshape(x, (1,-1)), axis=0)
+    y = classifier.predict(X)
+
+    print y
     # When you get a label, send it to the UI by calling onSpeakerDetected:
-    # onSpeakerDetected(speaker)
-    
+    onSpeakerDetected(y[0])
+
     return
-    
-    
+
+
 
 #################   Server Connection Code  ####################
 
@@ -92,7 +91,7 @@ msg_acknowledge_id = "ACK"
 def authenticate(sock):
     """
     Authenticates the user by performing a handshake with the data collection server.
-    
+
     If it fails, it will raise an appropriate exception.
     """
     message = sock.recv(256).strip()
@@ -109,13 +108,13 @@ def authenticate(sock):
     except:
         print("Authentication failed!")
         raise Exception("Wait timed out. Failed to receive authentication response from server.")
-        
+
     if (message.startswith(msg_acknowledge_id)):
         ack_id = message.split(",")[1]
     else:
         print("Authentication failed!")
         raise Exception("Expected message with prefix '{}' from server, received {}".format(msg_acknowledge_id, message))
-    
+
     if (ack_id == user_id):
         print("Authentication successful.")
         sys.stdout.flush()
@@ -128,23 +127,23 @@ try:
     print("Authenticating user for receiving data...")
     sys.stdout.flush()
     authenticate(receive_socket)
-    
+
     print("Authenticating user for sending data...")
     sys.stdout.flush()
     authenticate(send_socket)
-    
+
     print("Successfully connected to the server! Waiting for incoming data...")
     sys.stdout.flush()
-        
+
     previous_json = ''
-    
+
 #    sensor_data = []
 #    window_size = 20 # ~1 sec assuming 25 Hz sampling rate
 #    step_size = 40 # no overlap
 #    index = 0 # to keep track of how many samples we have buffered so far
-        
-    speech_audio_data = []       
-    
+
+    speech_audio_data = []
+
     while True:
         try:
             message = receive_socket.recv(1024).strip()
@@ -164,9 +163,9 @@ try:
                     print("Received audio data of length {}".format(len(audio_buffer)))
                     t = threading.Thread(target=predict, args=(np.asarray(audio_buffer),))
                     t.start()
-                
+
             sys.stdout.flush()
-        except KeyboardInterrupt: 
+        except KeyboardInterrupt:
             # occurs when the user presses Ctrl-C
             print("User Interrupt. Quitting...")
             break
@@ -174,19 +173,21 @@ try:
             # ignore exceptions, such as parsing the json
             # if a connection timeout occurs, also ignore and try again. Use Ctrl-C to stop
             # but make sure the error is displayed so we know what's going on
-            if (e.message != "timed out"):  # ignore timeout exceptions completely       
+            if (e.message != "timed out"):  # ignore timeout exceptions completely
                 print(e)
+            else:
+                previous_json=''
             pass
-except KeyboardInterrupt: 
+except KeyboardInterrupt:
     # occurs when the user presses Ctrl-C
     print("User Interrupt. Quitting...")
 finally:
     print >>sys.stderr, 'closing socket for receiving data'
     receive_socket.shutdown(socket.SHUT_RDWR)
     receive_socket.close()
-    
+
     print >>sys.stderr, 'closing socket for sending data'
     send_socket.shutdown(socket.SHUT_RDWR)
     send_socket.close()
-    
+
 #    show_pitch()

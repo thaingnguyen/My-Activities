@@ -123,8 +123,7 @@ class FeatureExtractor():
         This will give you a feature vector of length len(bins).
         """
         frequencies,bandwidths = self._compute_formants(window)
-        return np.histogram(frequencies, bins = 5, range=(0, 5500))[0]
-        # return [1] # returns dummy value; replace this with the features you extract
+        return np.histogram(frequencies, bins = 10, range=(0, 5500))[0]
 
     def _compute_pitch_contour(self, window):
         """
@@ -175,8 +174,7 @@ class FeatureExtractor():
         You may also want to return the average pitch and standard deviation.
         """
         pitch_contour, confidence_curve = self._compute_pitch_contour(window)
-        return np.histogram(pitch_contour, bins=5, range=(0, 128))[0]
-        # return [1] # returns dummy value; replace this with the features you extract
+        return np.histogram(pitch_contour, bins=10, range=(0, 128))[0]
 
     def _compute_mfcc(self, window):
         """
@@ -214,7 +212,18 @@ class FeatureExtractor():
         See section "Deltas and Delta-Deltas" at http://practicalcryptography.com/miscellaneous/machine-learning/guide-mel-frequency-cepstral-coefficients-mfccs/.
 
         """
-        return [1] # returns dummy value; replace this with the features you extract
+        mfccs = self._compute_mfcc(window)
+        frames, coefficients = mfccs.shape
+
+        denominator = 2 * sum([x * x for x in xrange(1, n+1)])
+        deltas = []
+        for frame in xrange(n, frames-n):
+            nominator = np.zeros(coefficients)
+            for i in xrange(1, n+1):
+                nominator += i * (mfccs[frame + i, :] - mfccs[frame - i, :])
+            deltas.extend(nominator / denominator)
+        
+        return deltas
 
     def _recognize_speech(window):
         """

@@ -124,7 +124,7 @@ try:
                 if (sensor_type == u"SENSOR_AUDIO"):
                     t = data['data']['t']
                     audio_buffer=data['data']['values']
-                    print("Received audio data of length ".format(len(audio_buffer)) + "Time: " 
+                    print("Received audio data of length ".format(len(audio_buffer)) + "Time: "
                         + datetime.datetime.now().strftime("%I:%M%p") + " speaker-label: " + str(label))
                     labelled_instance = [t]
                     labelled_instance.extend(audio_buffer)
@@ -143,6 +143,8 @@ try:
             # but make sure the error is displayed so we know what's going on
             if (e.message != "timed out"):  # ignore timeout exceptions completely
                 print(e)
+            else:
+                previous_json=''
             pass
 except KeyboardInterrupt:
     # occurs when the user presses Ctrl-C
