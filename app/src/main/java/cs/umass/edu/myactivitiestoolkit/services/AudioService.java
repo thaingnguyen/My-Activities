@@ -86,11 +86,14 @@ public class AudioService extends SensorService implements MicrophoneRecorder.Mi
                 try {
                     JSONObject data = json.getJSONObject("data");
                     speaker = data.getString("speaker");
+                    if (speaker != null) {
+//                        Log.d(TAG, "Received: " + speaker);
+                        broadcastSpeaker(speaker);
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return;
                 }
-                // TODO: Send the speaker to the UI
             }
         });
         super.onConnected();
@@ -124,6 +127,18 @@ public class AudioService extends SensorService implements MicrophoneRecorder.Mi
     }
 
     /**
+     * Broadcasts speaker of audio data.
+     * @param speaker
+     */
+    public void broadcastSpeaker(String speaker) {
+        Intent intent = new Intent();
+        intent.putExtra(Constants.KEY.SPEAKER, speaker);
+        intent.setAction(Constants.ACTION.BROADCAST_SPEAKER);
+        LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+        manager.sendBroadcast(intent);
+    }
+
+    /**
      * Called when an audio buffer is received. We compute and visualize the spectrogram
      * for you.
      * <br><br>
@@ -145,8 +160,8 @@ public class AudioService extends SensorService implements MicrophoneRecorder.Mi
         Log.d(TAG, String.valueOf(buffer));
 
         //send the audio buffer to the server
-        Log.d(TAG, "Array " + Arrays.toString(buffer));
-        Log.d(TAG, "toString " + buffer.toString());
+//        Log.d(TAG, "Array " + Arrays.toString(buffer));
+//        Log.d(TAG, "toString " + buffer.toString());
 
         mClient.sendSensorReading(new AudioBufferReading(mUserID, "MOBILE", "", System.currentTimeMillis(), buffer));
 

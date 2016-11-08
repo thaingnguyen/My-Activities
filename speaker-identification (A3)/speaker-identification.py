@@ -62,13 +62,20 @@ def predict(window):
     Android application. You must use the same feature
     extraction method that you used to train the model.
     """
-    x = feature_extractor.extract_features(window)
-    X = np.append(X, np.reshape(x, (1,-1)), axis=0)
+    X = feature_extractor.extract_features(window)
+    X = np.reshape(X, (1,-1))
     y = classifier.predict(X)
-
-    print y
-    # When you get a label, send it to the UI by calling onSpeakerDetected:
-    onSpeakerDetected(y[0])
+    speaker = None
+    if y[0] == 0:
+        speaker = "None"
+    elif y[0] == 1:
+        speaker = "Susie"
+    elif y[0] == 2:
+        speaker = "Gina"
+    elif y[0] == 1:
+        speaker = "Jared"
+    if speaker:
+        onSpeakerDetected(speaker)
 
     return
 

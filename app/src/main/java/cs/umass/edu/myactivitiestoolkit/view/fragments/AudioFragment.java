@@ -13,13 +13,17 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import org.w3c.dom.Text;
 
 import cs.umass.edu.myactivitiestoolkit.R;
 import cs.umass.edu.myactivitiestoolkit.constants.Constants;
@@ -55,6 +59,9 @@ public class AudioFragment extends Fragment {
     /** The switch which toggles the {@link AudioService}. **/
     private Switch switchRecord;
 
+    /** The one who is speaking. **/
+    private TextView speaker;
+
     /** Reference to the service manager which communicates to the {@link PPGService}. **/
     private ServiceManager serviceManager;
 
@@ -75,6 +82,9 @@ public class AudioFragment extends Fragment {
                 } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_SPECTROGRAM)){
                     double[][] spectrogram = (double[][]) intent.getSerializableExtra(Constants.KEY.SPECTROGRAM);
                     updateSpectrogram(spectrogram);
+                } else if (intent.getAction().equals(Constants.ACTION.BROADCAST_SPEAKER)) {
+                    String who = intent.getStringExtra(Constants.KEY.SPEAKER);
+                    speaker.setText("Predicted speaker: " + who);
                 }
             }
         }
@@ -103,6 +113,7 @@ public class AudioFragment extends Fragment {
             }
         });
         imgSpectrogram = (ImageView) rootView.findViewById(R.id.imgSpectrogram);
+        speaker = (TextView) rootView.findViewById(R.id.speaker);
         return rootView;
     }
 
@@ -133,6 +144,7 @@ public class AudioFragment extends Fragment {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Constants.ACTION.BROADCAST_MESSAGE);
         filter.addAction(Constants.ACTION.BROADCAST_SPECTROGRAM);
+        filter.addAction(Constants.ACTION.BROADCAST_SPEAKER);
         broadcastManager.registerReceiver(receiver, filter);
     }
 
