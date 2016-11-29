@@ -54,13 +54,18 @@ def cluster(latitudes, longitudes, algorithm, *args):
     Android application will receive the cluster indexes.
 
     """
+    coordinates = np.stack((latitudes, longitudes), axis = 1)
+    print coordinates
 
-    # TODO: Do what the comments / assignment details tell you to do.
-    if alogrithm == "k_means":
+    if algorithm == "k_means":
         k = int(args[0])
+        clusters = KMeans(n_clusters=k, random_state=1234).fit(coordinates)
     elif algorithm == "mean_shift":
-        pass
-        
+        clusters = MeanShift(bin_seeding=True).fit(coordinates)
+
+    send_clusters(clusters.labels_)
+    print clusters.labels_
+    
     return
 
 

@@ -96,7 +96,7 @@ public class LocationService extends SensorService implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.d(TAG, location.toString());
+        Log.i(TAG, location.toString());
         LocationDAO dao = new LocationDAO(getApplicationContext());
         dao.openWrite();
         dao.insert(new GPSLocation(location.getTime(),location.getLatitude(),location.getLongitude(), location.getAccuracy()));
