@@ -1,5 +1,7 @@
 package cs.umass.edu.myactivitiestoolkit.clustering;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -20,6 +22,8 @@ import java.util.Map;
  * @see Cluster
  */
 public class DBScan<T extends Clusterable<T>> {
+
+    private static final String TAG = DBScan.class.getName();
 
     /** Radius of the neighborhood for expanding clusters */
     private final double eps;
@@ -94,31 +98,28 @@ public class DBScan<T extends Clusterable<T>> {
             states.put(p, State.UNVISITED);
         }
 
-        //TODO: Implement the DBScan algorithm - currently the code returns a single cluster containing all points
-        Cluster<T> currentCluster = new Cluster<>();
-        clusters.add(currentCluster);
         for (final T p: points) {
-            if (states.get(p) == State.UNVISITED) {
-                states.put(p, State.CLUSTERED);
+            Log.d(TAG, p.toString());
+            if (states.get(p).equals(State.UNVISITED)) {
+//                states.put(p, State.CLUSTERED);
                 List<T> neighborPoints = regionQuery(p, points);
+                Log.d(TAG, neighborPoints.size() + "");
                 if (neighborPoints.size() < getMinPts()) {
                     states.put(p, State.NOISE);
                 } else {
-                    currentCluster = new Cluster<>();
+                    Cluster<T> currentCluster = new Cluster<>();
                     clusters.add(currentCluster);
                     expandCluster(currentCluster, p, states, neighborPoints, points);
                 }
             }
         }
 
-        //TODO: The following block of code adds all points to a single cluster. Make sure to remove this!
-//        {
-//            Cluster<T> fakeCluster = new Cluster<T>();
-//            for (final T p : points)
-//                fakeCluster.addPoint(p);
-//            clusters.add(fakeCluster);
-//        }
-
+        Log.d(TAG, states.toString());
+        for (Cluster<T> cluster: clusters) {
+            for (T p: cluster.getPoints()) {
+                Log.d(TAG, p.toString());
+            }
+        }
         return clusters;
 
     }
@@ -143,13 +144,15 @@ public class DBScan<T extends Clusterable<T>> {
 
         //TODO: Complete the rest of the expandCluster algorithm, as outlined in the slides
         for (final T neighbor : neighborPts) {
-            if (states.get(neighbor) == State.UNVISITED) {
+            if (states.get(neighbor).equals(State.UNVISITED)) {
                 states.put(neighbor, State.CLUSTERED);
+                cluster.addPoint(neighbor);
+
                 List<T> otherNeighbors = regionQuery(neighbor, points);
                 if (otherNeighbors.size() >= getMinPts()) {
                     addAsSet(neighborPts, otherNeighbors);
                 }
-            } else if (states.get(neighbor) == State.NOISE) {
+            } else if (states.get(neighbor).equals(State.NOISE)) {
                 cluster.addPoint(neighbor);
                 states.put(neighbor, State.CLUSTERED);
             }

@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.ArrayMap;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -368,10 +369,14 @@ public class LocationsFragment extends Fragment {
      */
     private void drawClusters(final Collection<Cluster<GPSLocation>> clusters){
         final int[] colors = new int[]{Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.CYAN, Color.WHITE};
-        // TODO: For each cluster, draw a convex hull around the points in a sufficiently distinct color
         int currentColorIndex = 0;
         for (Cluster<GPSLocation> cluster: clusters) {
-            drawHullFromPoints(cluster.getPoints().toArray(new GPSLocation[cluster.getPoints().size()]), colors[currentColorIndex]);
+            GPSLocation[] drawingCluster = cluster.getPoints().toArray(new GPSLocation[cluster.getPoints().size()]);
+            Log.i(TAG, currentColorIndex + "");
+            for (GPSLocation location: drawingCluster) {
+                Log.i(TAG, location.getLatitude() + " " + location.getLongitude());
+            }
+            drawHullFromPoints(drawingCluster, colors[currentColorIndex]);
             currentColorIndex = (currentColorIndex + 1) % colors.length;
         }
     }
@@ -384,7 +389,6 @@ public class LocationsFragment extends Fragment {
      * @param minPts the minimum number of points in a neighborhood.
      */
     private void runDBScan(GPSLocation[] locations, float eps, int minPts){
-        //TODO: Cluster the locations by calling DBScan.
         DBScan<GPSLocation> dbScan = new DBScan<>(eps, minPts);
         final List<Cluster<GPSLocation>> clusters = dbScan.cluster(new ArrayList<>(Arrays.asList(locations)));
         getActivity().runOnUiThread(new Runnable() {
@@ -433,8 +437,6 @@ public class LocationsFragment extends Fragment {
                             clusters.put(index, new Cluster<GPSLocation>());
                         }
                         clusters.get(index).addPoint(locations[i]);
-                        //TODO: Using the index of each location, generate a list of k clusters, then call drawClusters().
-                        //You may choose to use the Map defined above or find a different way of doing it.
                     }
 
                     // We are only allowed to manipulate the map on the main (UI) thread:
@@ -490,8 +492,6 @@ public class LocationsFragment extends Fragment {
                             clusters.put(index, new Cluster<GPSLocation>());
                         }
                         clusters.get(index).addPoint(locations[i]);
-                        //TODO: Using the index of each location, generate clusters, then call drawClusters().
-                        //You may choose to use the Map defined above or find a different way of doing it.
                     }
 
                     // We are only allowed to manipulate the map on the main (UI) thread:

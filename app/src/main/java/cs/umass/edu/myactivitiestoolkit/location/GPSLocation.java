@@ -137,4 +137,9 @@ public class GPSLocation implements Clusterable<GPSLocation> {
 	/*double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
 		Math.cos(Math.toRadians(this.latitude)) * Math.cos(Math.toRadians(other.longitude)) *
 				Math.sin(dLng/2) * Math.sin(dLng/2);*/
+
+	@Override
+	public String toString() {
+		return latitude + " " + longitude;
+	}
 }
